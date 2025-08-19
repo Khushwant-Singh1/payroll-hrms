@@ -85,30 +85,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session
     },
     
-    async redirect({ url, baseUrl }) {
-      // Handle production and development URLs properly
-      const isDev = process.env.NODE_ENV === 'development'
-      
-      // In production, prioritize NEXTAUTH_URL, then VERCEL_URL, then baseUrl
-      let correctBaseUrl = baseUrl
-      if (!isDev) {
-        const nextAuthUrl = process.env.NEXTAUTH_URL
-        const vercelUrl = process.env.VERCEL_URL
-        
-        if (nextAuthUrl) {
-          correctBaseUrl = nextAuthUrl
-        } else if (vercelUrl) {
-          correctBaseUrl = vercelUrl.startsWith('http') ? vercelUrl : `https://${vercelUrl}`
-        }
-      }
-      
-      console.log('Redirect callback:', { url, baseUrl, correctBaseUrl, isDev })
-      
-      // Redirect to dashboard after sign in
-      if (url.startsWith("/")) return `${correctBaseUrl}${url}`
-      else if (new URL(url).origin === correctBaseUrl) return url
-      return `${correctBaseUrl}/`
-    },
+    
   },
   
   events: {
