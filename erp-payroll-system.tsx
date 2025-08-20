@@ -19,7 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { useERPPayroll } from "./hooks/useERPPayroll"
-import { EmployeeList } from "./components/employee-list"
+import { EmployeeList } from "./components/EmployeeList"
 import { DetailedPayrollCalculator } from "./components/detailed-payroll-calculator"
 import { PayrollProcessingEngine } from "./components/payroll-processing-engine"
 import { ComplianceDashboard } from "./components/compliance-dashboard"

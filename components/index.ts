@@ -1,7 +1,7 @@
 // Main Components
 export { Sidebar } from './sidebar'
-export { DashboardHeader } from './dashboard-header'
-export { EmployeeManagement } from './employee-management'
+export { DashboardHeader } from './DashboardHeader'
+export { EmployeeManagement } from './EmployeeManagement'
 
 // Tab Components
 export { AttendanceTab } from './attendance-tab'

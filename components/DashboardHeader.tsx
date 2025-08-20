@@ -22,7 +22,7 @@ export function DashboardHeader({ formatCurrency, getTotalNetPay }: DashboardHea
             </div>
             <div className="text-sm text-gray-500">Total Net Pay</div>
           </div>
-          <SignOutButton variant="outline" />
+          <SignOutButton variant="outline" className="cursor-pointer" />
         </div>
       </div>
     </div>

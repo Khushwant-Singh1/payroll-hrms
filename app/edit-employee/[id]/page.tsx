@@ -111,7 +111,7 @@ export default function EditEmployeePage() {
         // Redirect to main dashboard
         router.push('/')
       } else {
-        // Update existing employee
+        // Update existing employee with the form data
         const response = await fetch(`/api/employees/${employeeId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -119,10 +119,12 @@ export default function EditEmployeePage() {
         })
         
         if (!response.ok) {
-          throw new Error('Failed to update employee')
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to update employee')
         }
         
-        // Redirect to main dashboard
+        // Show success message and redirect to main dashboard
+        alert('Employee updated successfully!')
         router.push('/')
       }
     } catch (err) {

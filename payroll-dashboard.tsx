@@ -9,8 +9,8 @@ import { Menu } from "lucide-react"
 
 import { usePayrollData } from "./hooks/usePayrollData"
 import { Sidebar } from "./components/sidebar"
-import { DashboardHeader } from "./components/dashboard-header"
-import { EmployeeManagement } from "./components/employee-management"
+import { DashboardHeader } from "./components/DashboardHeader"
+import { EmployeeManagement } from "./components/EmployeeManagement"
 import { AttendanceTab } from "./components/attendance-tab"
 import { PayrollTab } from "./components/payroll-tab"
 import { StatutoryTab } from "./components/statutory-tab"
@@ -90,7 +90,7 @@ export default function PayrollDashboardPage() {
             variant="outline"
             size="sm"
             onClick={() => setIsSidebarCollapsed(false)}
-            className="fixed top-4 left-4 z-40 bg-white shadow-md"
+            className="fixed top-4 left-4 z-40 bg-white shadow-md cursor-pointer"
           >
             <Menu className="h-4 w-4" />
           </Button>

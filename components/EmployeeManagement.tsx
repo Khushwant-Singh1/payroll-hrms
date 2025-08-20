@@ -120,7 +120,7 @@ export function EmployeeManagement({
             <Button
               variant="outline"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-2 cursor-pointer ${
                 companyFilter || statusFilter
                   ? "bg-blue-50 border-blue-300"
                   : ""
@@ -143,7 +143,7 @@ export function EmployeeManagement({
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-blue-600 hover:text-blue-800 cursor-pointer"
                   >
                     Clear all
                   </Button>
@@ -162,11 +162,11 @@ export function EmployeeManagement({
                             name="companyFilter"
                             checked={companyFilter === company}
                             onChange={() => setCompanyFilter(company)}
-                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                           />
                           <label
                             htmlFor={`company-${company}`}
-                            className="ml-2 text-sm text-gray-700"
+                            className="ml-2 text-sm text-gray-700 cursor-pointer"
                           >
                             {company}
                           </label>
@@ -179,11 +179,11 @@ export function EmployeeManagement({
                           name="companyFilter"
                           checked={!companyFilter}
                           onChange={() => setCompanyFilter(null)}
-                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <label
                           htmlFor="company-all"
-                          className="ml-2 text-sm text-gray-700"
+                          className="ml-2 text-sm text-gray-700 cursor-pointer"
                         >
                           All Companies
                         </label>
@@ -203,11 +203,11 @@ export function EmployeeManagement({
                             name="statusFilter"
                             checked={statusFilter === status}
                             onChange={() => setStatusFilter(status)}
-                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                           />
                           <label
                             htmlFor={`status-${status}`}
-                            className="ml-2 text-sm text-gray-700 capitalize"
+                            className="ml-2 text-sm text-gray-700 capitalize cursor-pointer"
                           >
                             {status}
                           </label>
@@ -220,11 +220,11 @@ export function EmployeeManagement({
                           name="statusFilter"
                           checked={!statusFilter}
                           onChange={() => setStatusFilter(null)}
-                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <label
                           htmlFor="status-all"
-                          className="ml-2 text-sm text-gray-700"
+                          className="ml-2 text-sm text-gray-700 cursor-pointer"
                         >
                           All Statuses
                         </label>

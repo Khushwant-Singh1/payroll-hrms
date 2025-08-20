@@ -183,11 +183,11 @@ export function EmployeeList({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => onViewEmployee(employee)}>
+                        <div className="flex gap-2 cursor-pointer">
+                          <Button size="sm" variant="outline" onClick={() => onViewEmployee(employee)} className="cursor-pointer">
                             <Eye className="h-3 w-3" />
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => onEditEmployee(employee)}>
+                          <Button size="sm" variant="outline" onClick={() => onEditEmployee(employee)} className="cursor-pointer">
                             <Edit className="h-3 w-3" />
                           </Button>
                         </div>
