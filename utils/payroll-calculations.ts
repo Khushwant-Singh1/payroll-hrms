@@ -602,6 +602,7 @@ export function calculateCompletePayroll(employee: any, attendance: any, deducti
     {},
   )
 }
+}
 
 // Payroll Engine
 export class PayrollEngine {

@@ -31,23 +31,22 @@ export default function ViewEmployeePage() {
   const { employees } = usePayrollData()
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   /* Fetch employee data */
   useEffect(() => {
     const foundEmployee = employees.find((emp) => emp.id === employeeId)
     if (foundEmployee) {
       try {
-        // Convert Prisma Decimal values to numbers and calculate total salary
-        const basicSalary = foundEmployee.basicSalary ? Number(foundEmployee.basicSalary.toString()) : 0
-        const hra = foundEmployee.hra ? Number(foundEmployee.hra.toString()) : 0
-        const allowances = foundEmployee.allowances ? Number(foundEmployee.allowances.toString()) : 0
+        const totalSalary = Number(foundEmployee.basicSalary) + Number(foundEmployee.hra) + Number(foundEmployee.allowances)
+        const basicSalary = Number(foundEmployee.basicSalary)
+        const hra = Number(foundEmployee.hra) 
+        const allowances = Number(foundEmployee.allowances)
         const salary = basicSalary + hra + allowances
 
-        // Helper function to safely convert dates
         const formatDate = (date: any): string => {
           if (!date) return ""
           try {
-            // Handle both Date objects and date strings
             const dateObj = typeof date === 'string' ? new Date(date) : date
             if (isNaN(dateObj.getTime())) return ""
             return dateObj.toISOString().split('T')[0]
@@ -56,7 +55,6 @@ export default function ViewEmployeePage() {
           }
         }
 
-        // Create employee object with proper type conversion
         const employeeData: Employee = {
           id: foundEmployee.id,
           employeeId: foundEmployee.employeeId,
@@ -89,11 +87,11 @@ export default function ViewEmployeePage() {
         }
         setEmployee(employeeData)
       } catch (error) {
-        console.error("Error processing employee data:", error)
-        setEmployee(null)
+        setError("Failed to fetch employee data")
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
   }, [employees, employeeId])
 
   /* Helpers */

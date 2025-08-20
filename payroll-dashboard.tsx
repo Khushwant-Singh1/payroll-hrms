@@ -47,7 +47,6 @@ export default function PayrollDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  // Handle URL parameters for tab navigation
   useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab) {

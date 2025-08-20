@@ -1,6 +1,5 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@auth/prisma-adapter"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
@@ -11,8 +10,6 @@ const loginSchema = z.object({
 })
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  // adapter: PrismaAdapter(db), // Commented out for now to use JWT with credentials
-  
   session: { strategy: "jwt" },
   
   pages: {
@@ -89,10 +86,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   
   events: {
     async signIn({ user, account, profile }) {
-      console.log("User signed in:", user.email)
+      // User signed in successfully
     },
     async signOut(message) {
-      console.log("User signed out")
+      // User signed out successfully
     },
   },
 })
