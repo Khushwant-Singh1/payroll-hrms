@@ -1,4 +1,5 @@
 "use client";
+
 import {
   Card,
   CardContent,
@@ -18,9 +19,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Filter, Eye, Edit, X, User, Save } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  X,
+  User,
+  Save,
+  Download,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Employee } from "../types/payroll";
+import * as XLSX from "xlsx"; // Excel library
 
 interface EmployeeManagementProps {
   employees: Employee[];
@@ -49,33 +61,65 @@ export function EmployeeManagement({
 }: EmployeeManagementProps) {
   const router = useRouter();
 
-  // Get unique companies for filter dropdown
+  /* ---------------- Filters ---------------- */
   const companies = Array.from(new Set(employees.map((emp) => emp.company)));
   const statusOptions = ["active", "inactive"];
 
   const filteredEmployees = employees.filter((emp) => {
-    // Search term filter
     const matchesSearch =
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.company.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Company filter
     const matchesCompany = companyFilter ? emp.company === companyFilter : true;
-
-    // Status filter
     const matchesStatus = statusFilter ? emp.status === statusFilter : true;
 
     return matchesSearch && matchesCompany && matchesStatus;
   });
 
-  // Clear all filters
   const clearFilters = () => {
     setCompanyFilter(null);
     setStatusFilter(null);
     setIsFilterOpen(false);
   };
 
+  /* ---------------- Excel Download ---------------- */
+  const handleDownloadExcel = () => {
+    const rows = filteredEmployees.map((e) => ({
+      "Employee ID": e.employeeId,
+      Name: e.name,
+      Email: e.email,
+      Phone: e.phone,
+      Company: e.company,
+      Department: e.department,
+      Designation: e.designation,
+      Location: e.location ?? "",
+      Grade: e.grade ?? "",
+      "Joining Date": e.joiningDate,
+      "Date of Birth": e.dateOfBirth ?? "",
+      Status: e.status,
+      "Basic Salary": Number(e.basicSalary),
+      HRA: Number(e.hra),
+      Allowances: Number(e.allowances),
+      PAN: e.pan ?? "",
+      Aadhaar: e.aadhaar ?? "",
+      UAN: e.uan ?? "",
+      "ESIC Number": e.esicNumber ?? "",
+      "PF Opt In": e.pfOptIn,
+      "ESI Applicable": e.esiApplicable,
+      "LWF State": e.lwfState ?? "",
+      "Bank Account": e.bankAccount ?? "",
+      IFSC: e.ifsc ?? "",
+      Branch: e.branch ?? "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    XLSX.writeFile(wb, "Employees.xlsx");
+  };
+
+  /* ---------------- UI ---------------- */
   return (
     <Card>
       <CardHeader>
@@ -84,7 +128,17 @@ export function EmployeeManagement({
             <CardTitle>Employee Management</CardTitle>
             <CardDescription>Manage employee master data</CardDescription>
           </div>
+
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDownloadExcel}
+              className="cursor-pointer"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Excel
+            </Button>
+
             <Button
               variant="outline"
               onClick={() => router.push("/employee-drafts")}
@@ -93,6 +147,7 @@ export function EmployeeManagement({
               <Save className="h-4 w-4 mr-2" />
               Drafts
             </Button>
+
             <Button
               onClick={() => router.push("/add-employee")}
               className="cursor-pointer"
@@ -103,7 +158,9 @@ export function EmployeeManagement({
           </div>
         </div>
       </CardHeader>
+
       <CardContent>
+        {/* Search + Filter controls */}
         <div className="flex items-center gap-4 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -115,7 +172,7 @@ export function EmployeeManagement({
             />
           </div>
 
-          {/* Filter Button with Dropdown */}
+          {/* Filter Dropdown */}
           <div className="relative">
             <Button
               variant="outline"
@@ -150,25 +207,25 @@ export function EmployeeManagement({
                 </div>
 
                 <div className="space-y-4">
-                  {/* Company Filter */}
+                  {/* Company */}
                   <div>
                     <h4 className="text-sm font-medium mb-2">Company</h4>
                     <div className="space-y-2">
-                      {companies.map((company) => (
-                        <div key={company} className="flex items-center">
+                      {companies.map((c) => (
+                        <div key={c} className="flex items-center">
                           <input
                             type="radio"
-                            id={`company-${company}`}
+                            id={`company-${c}`}
                             name="companyFilter"
-                            checked={companyFilter === company}
-                            onChange={() => setCompanyFilter(company)}
+                            checked={companyFilter === c}
+                            onChange={() => setCompanyFilter(c)}
                             className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                           />
                           <label
-                            htmlFor={`company-${company}`}
+                            htmlFor={`company-${c}`}
                             className="ml-2 text-sm text-gray-700 cursor-pointer"
                           >
-                            {company}
+                            {c}
                           </label>
                         </div>
                       ))}
@@ -191,25 +248,25 @@ export function EmployeeManagement({
                     </div>
                   </div>
 
-                  {/* Status Filter */}
+                  {/* Status */}
                   <div>
                     <h4 className="text-sm font-medium mb-2">Status</h4>
                     <div className="space-y-2">
-                      {statusOptions.map((status) => (
-                        <div key={status} className="flex items-center">
+                      {statusOptions.map((s) => (
+                        <div key={s} className="flex items-center">
                           <input
                             type="radio"
-                            id={`status-${status}`}
+                            id={`status-${s}`}
                             name="statusFilter"
-                            checked={statusFilter === status}
-                            onChange={() => setStatusFilter(status)}
+                            checked={statusFilter === s}
+                            onChange={() => setStatusFilter(s)}
                             className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                           />
                           <label
-                            htmlFor={`status-${status}`}
+                            htmlFor={`status-${s}`}
                             className="ml-2 text-sm text-gray-700 capitalize cursor-pointer"
                           >
-                            {status}
+                            {s}
                           </label>
                         </div>
                       ))}
@@ -237,7 +294,7 @@ export function EmployeeManagement({
           </div>
         </div>
 
-        {/* Active Filters Badges */}
+        {/* Active filter badges */}
         {(companyFilter || statusFilter) && (
           <div className="flex gap-2 mb-4 flex-wrap">
             {companyFilter && (
@@ -263,6 +320,7 @@ export function EmployeeManagement({
           </div>
         )}
 
+        {/* Table */}
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
@@ -291,9 +349,7 @@ export function EmployeeManagement({
                       </Avatar>
                       <div>
                         <div className="font-medium">{emp.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {emp.employeeId}
-                        </div>
+                        <div className="text-sm text-gray-500">{emp.employeeId}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -304,9 +360,7 @@ export function EmployeeManagement({
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={
-                        emp.status === "active" ? "default" : "secondary"
-                      }
+                      variant={emp.status === "active" ? "default" : "secondary"}
                     >
                       {emp.status}
                     </Badge>

@@ -41,22 +41,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           }
           
-          // TODO: Implement real user authentication with database lookup
-          // const user = await db.user.findUnique({
-          //   where: { email },
-          // })
-          // 
-          // if (!user || !await bcrypt.compare(password, user.hashedPassword)) {
-          //   return null
-          // }
-          // 
-          // return {
-          //   id: user.id,
-          //   email: user.email,
-          //   name: user.name,
-          //   role: user.role
-          // }
-          
           return null
         } catch {
           return null
