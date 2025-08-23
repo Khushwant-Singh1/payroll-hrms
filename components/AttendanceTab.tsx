@@ -7,16 +7,29 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Calendar, Timer, Clock, Plus, Edit, Search } from "lucide-react"
-import { AttendanceInputModal } from "./attendance-input-modal"
-import type { AttendanceRecord, Employee } from "../types/payroll"
+import { AttendanceInputModal } from "./AttendanceInputModal"
+import type { Employee } from "../types/payroll"
 import type { AttendanceInput } from "../types/erp-payroll"
+import type { Attendance } from "@prisma/client"
+
+// Type for attendance with employee data (from API response)
+type AttendanceWithEmployee = Attendance & {
+  employee?: {
+    id: string;
+    name: string;
+    employeeId: string;
+    basicSalary: number;
+    hra: number;
+    allowances: number;
+  }
+}
 
 interface AttendanceTabProps {
-  attendance: AttendanceRecord[]
+  attendance: AttendanceWithEmployee[]
   employees: Employee[]
   formatCurrency: (amount: number) => string
-  addAttendanceRecord: (attendanceData: Omit<AttendanceRecord, "id">) => AttendanceRecord
-  updateAttendanceRecord: (id: string, updates: Partial<AttendanceRecord>) => void
+  addAttendanceRecord: (attendanceData: Omit<Attendance, "id" | "createdAt" | "updatedAt">) => Promise<Attendance>
+  updateAttendanceRecord: (id: string, updates: Partial<Attendance>) => Promise<Attendance>
 }
 
 export function AttendanceTab({
@@ -28,7 +41,7 @@ export function AttendanceTab({
 }: AttendanceTabProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null)
+  const [editingAttendance, setEditingAttendance] = useState<AttendanceWithEmployee | null>(null)
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -44,13 +57,13 @@ export function AttendanceTab({
       icon: Timer,
       title: "Overtime",
       desc: "Extra hours worked",
-      value: `${attendance.reduce((s, a) => s + a.overtimeHours, 0)} hours`,
+      value: `${attendance.reduce((s, a) => s + Number(a.overtimeHours), 0)} hours`,
     },
     {
       icon: Clock,
       title: "Shift Allowances",
       desc: "Night/weekend premiums",
-      value: formatCurrency(attendance.reduce((s, a) => s + a.shiftAllowance, 0)),
+      value: formatCurrency(attendance.reduce((s, a) => s + Number(a.shiftAllowance), 0)),
     },
   ]
 
@@ -62,41 +75,46 @@ export function AttendanceTab({
     setShowEmployeeSelect(false)
   }
 
-  const handleEditAttendance = (employee: Employee, record: AttendanceRecord) => {
+  const handleEditAttendance = (employee: Employee, record: AttendanceWithEmployee) => {
     setSelectedEmployee(employee)
     setEditingAttendance(record)
     setIsModalOpen(true)
   }
 
-  const handleSaveAttendance = (attendanceData: AttendanceInput) => {
+  const handleSaveAttendance = async (attendanceData: AttendanceInput) => {
     if (!selectedEmployee) return
 
-    const record: Omit<AttendanceRecord, "id"> = {
+    const record: Omit<Attendance, "id" | "createdAt" | "updatedAt"> = {
       employeeId: selectedEmployee.id,
       month: attendanceData.month,
       year: attendanceData.year,
       presentDays: attendanceData.presentDays,
       totalDays: attendanceData.workingDays,
-      overtimeHours: attendanceData.overtimeHours,
+      overtimeHours: attendanceData.overtimeHours as any, // Convert number to Decimal
       leavesTaken: attendanceData.absentDays,
-      shiftAllowance: attendanceData.hazardPay,
+      shiftAllowance: attendanceData.hazardPay as any, // Convert number to Decimal
     }
 
-    if (editingAttendance) {
-      updateAttendanceRecord(editingAttendance.id, record)
-    } else {
-      addAttendanceRecord(record)
+    try {
+      if (editingAttendance) {
+        await updateAttendanceRecord(editingAttendance.id, record)
+      } else {
+        await addAttendanceRecord(record)
+      }
+      setIsModalOpen(false)
+      setSelectedEmployee(null)
+      setEditingAttendance(null)
+    } catch (error) {
+      console.error('Error saving attendance:', error)
     }
-    setIsModalOpen(false)
-    setSelectedEmployee(null)
-    setEditingAttendance(null)
   }
 
   /* ---------- search filtering ---------- */
   const filteredAttendance = useMemo(() => {
     const term = searchTerm.toLowerCase()
     return attendance.filter((rec) => {
-      const emp = employees.find((e) => e.id === rec.employeeId)
+      // Try to get employee from the included relation first, then fallback to employees array
+      const emp = rec.employee || employees.find((e) => e.id === rec.employeeId)
       if (!emp) return false
       return (
         emp.name.toLowerCase().includes(term) ||
@@ -192,7 +210,8 @@ export function AttendanceTab({
               </TableHeader>
               <TableBody>
                 {filteredAttendance.map((rec) => {
-                  const employee = employees.find((e) => e.id === rec.employeeId)
+                  // Try to get employee from the included relation first, then fallback to employees array
+                  const employee = rec.employee || employees.find((e) => e.id === rec.employeeId)
                   if (!employee) return null
                   const percentage = Math.round((rec.presentDays / rec.totalDays) * 100)
                   return (
@@ -206,7 +225,7 @@ export function AttendanceTab({
                       <TableCell>{rec.month} {rec.year}</TableCell>
                       <TableCell>{rec.presentDays}</TableCell>
                       <TableCell>{rec.totalDays}</TableCell>
-                      <TableCell>{rec.overtimeHours}</TableCell>
+                      <TableCell>{Number(rec.overtimeHours)}</TableCell>
                       <TableCell>{rec.leavesTaken}</TableCell>
                       <TableCell>
                         <Badge
@@ -221,7 +240,13 @@ export function AttendanceTab({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleEditAttendance(employee, rec)}
+                          onClick={() => {
+                            // Find the full employee object from the employees array
+                            const fullEmployee = employees.find(e => e.id === employee.id)
+                            if (fullEmployee) {
+                              handleEditAttendance(fullEmployee, rec)
+                            }
+                          }}
                           title="Edit Attendance"
                         >
                           <Edit className="h-3 w-3" />
@@ -256,8 +281,8 @@ export function AttendanceTab({
                   workingDays: editingAttendance.totalDays,
                   presentDays: editingAttendance.presentDays,
                   absentDays: editingAttendance.leavesTaken,
-                  overtimeHours: editingAttendance.overtimeHours,
-                  hazardPay: editingAttendance.shiftAllowance,
+                  overtimeHours: Number(editingAttendance.overtimeHours),
+                  hazardPay: Number(editingAttendance.shiftAllowance),
                   halfDays: 0, // Default value since not tracked in AttendanceRecord
                   paidLeave: 0, // Default value since not tracked in AttendanceRecord
                   unpaidLeave: editingAttendance.leavesTaken, // Map leavesTaken to unpaidLeave

@@ -76,7 +76,7 @@ export function getMonthDetails(
     const date = new Date(year, monthIndex, day);
     const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
 
-    // Check for weekends
+    // Check for weekends (0 = Sunday, 6 = Saturday)
     if (dayOfWeek === 0 || dayOfWeek === 7) {
       weekendDays++;
       continue; // Skip to next day

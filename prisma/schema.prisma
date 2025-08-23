@@ -1,3 +1,4 @@
+// ── existing generator & datasource ──
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── existing Employee & EmployeeDraft ──
 model Employee {
   id            String         @id @default(cuid())
   employeeId    String         @unique
@@ -37,11 +39,14 @@ model Employee {
   profilePic    String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  // ── NEW RELATION ──
+  attendance    Attendance[]
 }
 
 model EmployeeDraft {
   id            String         @id @default(cuid())
-  employeeId    String?        // Optional as it might be empty in draft
+  employeeId    String?
   name          String?
   email         String?
   phone         String?
@@ -51,7 +56,7 @@ model EmployeeDraft {
   location      String?
   grade         String?
   status        EmployeeStatus @default(active)
-  joiningDate   String?        // Store as string in draft to allow incomplete dates
+  joiningDate   String?
   dateOfBirth   String?
   basicSalary   Decimal?       @db.Decimal(12, 2)
   hra           Decimal?       @db.Decimal(12, 2)
@@ -67,10 +72,10 @@ model EmployeeDraft {
   ifsc          String?
   branch        String?
   profilePic    String?
-  createdBy     String?        // To track who created the draft
+  createdBy     String?
   lastModified  DateTime       @default(now()) @updatedAt
   createdAt     DateTime       @default(now())
-  
+
   @@map("employee_drafts")
 }
 
@@ -83,6 +88,25 @@ model StatutoryReturn {
   updatedAt   DateTime @updatedAt
 }
 
+// ── NEW ATTENDANCE MODEL ──
+model Attendance {
+  id             String   @id @default(cuid())
+  employeeId     String
+  month          String   // e.g. "January"
+  year           Int
+  presentDays    Int
+  totalDays      Int
+  overtimeHours  Decimal  @db.Decimal(5, 2) // 999.99 max
+  leavesTaken    Int
+  shiftAllowance Decimal  @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+// ── existing enum ──
 enum EmployeeStatus {
   active
   inactive

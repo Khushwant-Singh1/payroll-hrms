@@ -81,20 +81,31 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
   // ✨ IMPROVED: This effect only handles financial calculations.
   useEffect(() => {
     const { totalDaysInMonth } = monthDetails;
-    const perDayGross = totalDaysInMonth > 0 ? employee.salary / totalDaysInMonth : 0;
-    const calculatedGross = perDayGross * presentDays;
-    const lopAmount = perDayGross * absentDays;
-    const overtimePay = overtimeHours * 500;
-    const nightShiftPay = nightShiftDays * 1000;
-    const totalGross = calculatedGross + overtimePay + nightShiftPay + hazardPay;
+    
+    // Safety checks to prevent NaN
+    const employeeSalary = employee.salary || 0;
+    const validTotalDays = totalDaysInMonth > 0 ? totalDaysInMonth : 30; // fallback to 30 days
+    const validPresentDays = presentDays >= 0 ? presentDays : 0;
+    const validAbsentDays = absentDays >= 0 ? absentDays : 0;
+    const validOvertimeHours = overtimeHours >= 0 ? overtimeHours : 0;
+    const validNightShiftDays = nightShiftDays >= 0 ? nightShiftDays : 0;
+    const validHazardPay = hazardPay >= 0 ? hazardPay : 0;
+    
+    const perDayGross = employeeSalary / validTotalDays;
+    const calculatedGross = perDayGross * validPresentDays;
+    const lopAmount = perDayGross * validAbsentDays;
+    const overtimePay = validOvertimeHours * 500;
+    const nightShiftPay = validNightShiftDays * 1000;
+    const totalGross = calculatedGross + overtimePay + nightShiftPay + validHazardPay;
 
+    // Additional safety check to ensure no NaN values
     setFinancialData({
-      perDayGross,
-      calculatedGross,
-      lopAmount,
-      overtimePay,
-      nightShiftPay,
-      totalGross,
+      perDayGross: isNaN(perDayGross) ? 0 : perDayGross,
+      calculatedGross: isNaN(calculatedGross) ? 0 : calculatedGross,
+      lopAmount: isNaN(lopAmount) ? 0 : lopAmount,
+      overtimePay: isNaN(overtimePay) ? 0 : overtimePay,
+      nightShiftPay: isNaN(nightShiftPay) ? 0 : nightShiftPay,
+      totalGross: isNaN(totalGross) ? 0 : totalGross,
     });
   }, [presentDays, overtimeHours, nightShiftDays, hazardPay, employee.salary, monthDetails, absentDays]);
 
@@ -109,6 +120,34 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
   const handleYearChange = (year: string) => {
     setSelectedYear(Number(year));
     setCustomHolidays([]); // Reset custom holidays when year changes
+  };
+
+  const handlePresentDaysChange = (value: string) => {
+    const num = Number(value);
+    if (!isNaN(num) && num >= 0 && num <= monthDetails.workingDays) {
+      setPresentDays(num);
+    }
+  };
+
+  const handleOvertimeHoursChange = (value: string) => {
+    const num = Number(value);
+    if (!isNaN(num) && num >= 0) {
+      setOvertimeHours(num);
+    }
+  };
+
+  const handleNightShiftDaysChange = (value: string) => {
+    const num = Number(value);
+    if (!isNaN(num) && num >= 0) {
+      setNightShiftDays(num);
+    }
+  };
+
+  const handleHazardPayChange = (value: string) => {
+    const num = Number(value);
+    if (!isNaN(num) && num >= 0) {
+      setHazardPay(num);
+    }
   };
 
   const addCustomHoliday = () => {
@@ -316,10 +355,12 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                     id="presentDays"
                     type="number"
                     value={presentDays}
-                    onChange={(e) => setPresentDays(Number(e.target.value))}
+                    onChange={(e) => handlePresentDaysChange(e.target.value)}
                     min="0"
                     max={monthDetails.workingDays}
+                    placeholder="0"
                   />
+                  <p className="text-xs text-gray-500">Max: {monthDetails.workingDays} days</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="overtimeHours">Overtime Hours</Label>
@@ -327,9 +368,11 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                     id="overtimeHours"
                     type="number"
                     value={overtimeHours}
-                    onChange={(e) => setOvertimeHours(Number(e.target.value))}
+                    onChange={(e) => handleOvertimeHoursChange(e.target.value)}
                     min="0"
+                    placeholder="0"
                   />
+                  <p className="text-xs text-gray-500">₹500 per hour</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nightShiftDays">Night Shift Days</Label>
@@ -337,9 +380,11 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                     id="nightShiftDays"
                     type="number"
                     value={nightShiftDays}
-                    onChange={(e) => setNightShiftDays(Number(e.target.value))}
+                    onChange={(e) => handleNightShiftDaysChange(e.target.value)}
                     min="0"
+                    placeholder="0"
                   />
+                  <p className="text-xs text-gray-500">₹1,000 per day</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hazardPay">Hazard Pay</Label>
@@ -347,9 +392,11 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                     id="hazardPay"
                     type="number"
                     value={hazardPay}
-                    onChange={(e) => setHazardPay(Number(e.target.value))}
+                    onChange={(e) => handleHazardPayChange(e.target.value)}
                     min="0"
+                    placeholder="0"
                   />
+                  <p className="text-xs text-gray-500">Additional amount</p>
                 </div>
               </div>
 
@@ -388,7 +435,7 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                 Salary Preview
               </CardTitle>
               <CardDescription>
-                Calculated salary based on attendance
+                Calculated salary based on attendance (Base Salary: {formatCurrency(employee.salary || 0)})
               </CardDescription>
             </CardHeader>
             <CardContent>

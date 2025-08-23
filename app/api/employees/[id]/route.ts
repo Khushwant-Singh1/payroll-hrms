@@ -14,7 +14,14 @@ export async function PUT(req: NextRequest, { params }: { params:Promise<{ id: s
     where: { id },
     data: toDb(parsed.data),
   });
-  return NextResponse.json(updated);
+  
+  // Add calculated salary field to the response
+  const employeeWithSalary = {
+    ...updated,
+    salary: Number(updated.basicSalary) + Number(updated.hra) + Number(updated.allowances)
+  };
+  
+  return NextResponse.json(employeeWithSalary);
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {

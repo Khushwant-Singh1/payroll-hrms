@@ -42,7 +42,14 @@ export const toDb = (data: z.infer<typeof employeeSchema>) => ({
 /* GET /api/employees */
 export async function GET() {
   const employees = await prisma.employee.findMany({ orderBy: { createdAt: "desc" } });
-  return NextResponse.json(employees);
+  
+  // Add calculated salary field to each employee
+  const employeesWithSalary = employees.map(employee => ({
+    ...employee,
+    salary: Number(employee.basicSalary) + Number(employee.hra) + Number(employee.allowances)
+  }));
+  
+  return NextResponse.json(employeesWithSalary);
 }
 
 /* POST /api/employees */
@@ -54,7 +61,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const created = await prisma.employee.create({ data: toDb(parsed.data) });
-    return NextResponse.json(created, { status: 201 });
+    
+    // Add calculated salary field to the response
+    const employeeWithSalary = {
+      ...created,
+      salary: Number(created.basicSalary) + Number(created.hra) + Number(created.allowances)
+    };
+    
+    return NextResponse.json(employeeWithSalary, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 409 });
   }
