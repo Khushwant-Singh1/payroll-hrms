@@ -9,6 +9,7 @@ import { Menu } from "lucide-react"
 
 import { usePayrollData } from "./hooks/usePayrollData"
 import { Sidebar } from "./components/sidebar"
+import { MobileNavigation } from "./components/MobileNavigation"
 import { DashboardHeader } from "./components/DashboardHeader"
 import { EmployeeManagement } from "./components/EmployeeManagement"
 import { AttendanceTab } from "./components/AttendanceTab"
@@ -18,6 +19,7 @@ import { PaymentsTab } from "./components/payments-tab"
 import { PortalTab } from "./components/portal-tab"
 import { PayrollResultsModal } from "./components/modals/payroll-results-modal"
 import { PayrollEngine } from "./components/payroll-engine"
+import { useResponsive } from "./hooks/use-responsive"
 
 /* -------------------------------------------------------------------------- */
 /*  Main Page Component                                                       */
@@ -25,6 +27,8 @@ import { PayrollEngine } from "./components/payroll-engine"
 export default function PayrollDashboardPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { isMobile, isTablet } = useResponsive()
+  
   const {
     employees,
     attendance,
@@ -54,6 +58,15 @@ export default function PayrollDashboardPage() {
     }
   }, [searchParams])
 
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarCollapsed(true)
+    } else {
+      setIsSidebarCollapsed(false)
+    }
+  }, [isMobile])
+
   /* helpers */
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -71,31 +84,29 @@ export default function PayrollDashboardPage() {
   /* ---------- layout ---------- */
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar 
+      {/* Desktop Sidebar - Hidden on mobile */}
+      {!isMobile && (
+        <Sidebar 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          formatCurrency={formatCurrency}
+          getTotalNetPay={getTotalNetPay}
+        />
+      )}
+
+      {/* Mobile Navigation */}
+      <MobileNavigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        isSidebarCollapsed={isSidebarCollapsed}
-        setIsSidebarCollapsed={setIsSidebarCollapsed}
         formatCurrency={formatCurrency}
         getTotalNetPay={getTotalNetPay}
       />
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative">
-        {/* Mobile sidebar toggle button - shows when sidebar is collapsed */}
-        {isSidebarCollapsed && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsSidebarCollapsed(false)}
-            className="fixed top-4 left-4 z-40 bg-white shadow-md cursor-pointer"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        )}
-        
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className={`${isMobile ? 'p-3' : isTablet ? 'p-4' : 'p-6'} max-w-7xl mx-auto space-y-4 sm:space-y-6`}>
           {/* Header */}
           <DashboardHeader 
             formatCurrency={formatCurrency}
@@ -103,9 +114,9 @@ export default function PayrollDashboardPage() {
           />
 
           {/* Render the active tab body */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical">
+          <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="w-full">
             <TabsContent value="hr-data" className="mt-0">
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <EmployeeManagement 
                   employees={employees}
                   formatCurrency={formatCurrency}

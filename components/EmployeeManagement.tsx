@@ -26,7 +26,6 @@ import {
   Eye,
   Edit,
   X,
-  User,
   Save,
   Download,
 } from "lucide-react";
@@ -320,76 +319,91 @@ export function EmployeeManagement({
           </div>
         )}
 
-        {/* Table */}
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Designation</TableHead>
-                <TableHead className="text-right">Basic Salary</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmployees.map((emp) => (
-                <TableRow key={emp.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={emp.profilePic || "/placeholder.svg"}
-                          alt={emp.name}
-                        />
-                        <AvatarFallback>
-                          <User className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{emp.name}</div>
-                        <div className="text-sm text-gray-500">{emp.employeeId}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{emp.company}</TableCell>
-                  <TableCell>{emp.designation}</TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(emp.basicSalary)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={emp.status === "active" ? "default" : "secondary"}
-                    >
-                      {emp.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.push(`/view-employee/${emp.id}`)}
-                        title="View Employee"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.push(`/edit-employee/${emp.id}`)}
-                        title="Edit Employee"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        {/* Employee Table */}
+        <Card>
+          <CardHeader className="pb-3 sm:pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+              <div>
+                <CardTitle className="text-lg sm:text-xl">Employees ({filteredEmployees.length})</CardTitle>
+                <CardDescription className="text-sm">
+                  Showing {filteredEmployees.length} of {employees.length} employees
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+                <span>Total: {employees.length}</span>
+                {companyFilter && <span>• Company: {companyFilter}</span>}
+                {statusFilter && <span>• Status: {statusFilter}</span>}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs sm:text-sm">Employee</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Company</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Department</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Basic Salary</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                            <AvatarImage src={employee.profilePic} alt={employee.name} />
+                            <AvatarFallback className="text-xs sm:text-sm">
+                              {employee.name.split(" ").map((n) => n[0]).join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-xs sm:text-sm">{employee.name}</div>
+                            <div className="text-xs text-gray-500">{employee.employeeId}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">{employee.company}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">{employee.department}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">{formatCurrency(Number(employee.basicSalary))}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        <Badge
+                          variant={employee.status === "active" ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {employee.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/view-employee/${employee.id}`)}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                          >
+                            <Eye className="h-3 w-3 sm:h-3 sm:w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/edit-employee/${employee.id}`)}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3 sm:h-3 sm:w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );

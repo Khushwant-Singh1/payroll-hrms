@@ -6,8 +6,7 @@ export class ExcelGenerator {
     }
 
     const headers = Object.keys(data[0])
-    let csvContent = headers.join(",") + "
-"
+let csvContent = headers.join(",") + "\n"
 
     data.forEach((row) => {
       const values = headers.map((header) => {
@@ -17,8 +16,7 @@ export class ExcelGenerator {
         }
         return value
       })
-      csvContent += values.join(",") + "
-"
+      csvContent += values.join(",") + ""
     })
 
     const BOM = "\uFEFF"

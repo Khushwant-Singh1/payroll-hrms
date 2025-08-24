@@ -19,17 +19,8 @@ export default async function RootLayout({
   const session = await auth()
   
   return (
-    <html lang="en">  
-      <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
-      </head>
-      <body>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className={GeistSans.className}>
         <Provider session={session}>{children}</Provider>
       </body>
     </html>
