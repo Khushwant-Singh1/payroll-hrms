@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Card,
   CardContent,
@@ -28,8 +29,11 @@ import {
   X,
   Save,
   Download,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { Employee } from "../types/payroll";
 import * as XLSX from "xlsx"; // Excel library
 
@@ -59,12 +63,49 @@ export function EmployeeManagement({
   setIsFilterOpen,
 }: EmployeeManagementProps) {
   const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [employeeList, setEmployeeList] = useState<Employee[]>(employees);
+
+  // Update local state when employees prop changes
+  React.useEffect(() => {
+    setEmployeeList(employees);
+  }, [employees]);
+
+  /* ---------------- Delete Handler ---------------- */
+  const handleDelete = async (employee: Employee) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${employee.name}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    setDeletingId(employee.id);
+    try {
+      const response = await fetch(`/api/employees/${employee.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete employee');
+      }
+      
+      // Remove employee from local state
+      setEmployeeList(prev => prev.filter(emp => emp.id !== employee.id));
+      alert('Employee deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete employee');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   /* ---------------- Filters ---------------- */
-  const companies = Array.from(new Set(employees.map((emp) => emp.company)));
+  const companies = Array.from(new Set(employeeList.map((emp) => emp.company)));
   const statusOptions = ["active", "inactive"];
 
-  const filteredEmployees = employees.filter((emp) => {
+  const filteredEmployees = employeeList.filter((emp) => {
     const matchesSearch =
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -326,11 +367,11 @@ export function EmployeeManagement({
               <div>
                 <CardTitle className="text-lg sm:text-xl">Employees ({filteredEmployees.length})</CardTitle>
                 <CardDescription className="text-sm">
-                  Showing {filteredEmployees.length} of {employees.length} employees
+                  Showing {filteredEmployees.length} of {employeeList.length} employees
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
-                <span>Total: {employees.length}</span>
+                <span>Total: {employeeList.length}</span>
                 {companyFilter && <span>• Company: {companyFilter}</span>}
                 {statusFilter && <span>• Status: {statusFilter}</span>}
               </div>
@@ -394,6 +435,19 @@ export function EmployeeManagement({
                             className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
                             <Edit className="h-3 w-3 sm:h-3 sm:w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(employee)}
+                            disabled={deletingId === employee.id}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                          >
+                            {deletingId === employee.id ? (
+                              <Loader2 className="h-3 w-3 sm:h-3 sm:w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 sm:h-3 sm:w-3" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

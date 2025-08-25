@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// Retry utility function
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      console.error(`Attempt ${i + 1} failed:`, error.message);
+      
+      // If it's the last retry or not a connection error, throw the error
+      if (i === retries - 1 || !error.message?.includes('database server')) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+    }
+  }
+  throw new Error('All retry attempts failed');
+}
+
 // GET /api/attendance
 export async function GET(req: NextRequest) {
   try {
@@ -20,30 +40,43 @@ export async function GET(req: NextRequest) {
       ].filter(condition => condition.year?.equals !== undefined || condition.year === undefined)
     }
 
-    const records = await prisma.attendance.findMany({
-      where,
-      include: { 
-        employee: { 
-          select: { 
-            id: true, 
-            name: true, 
-            employeeId: true,
-            basicSalary: true,
-            hra: true,
-            allowances: true
+    const records = await withRetry(async () => {
+      return await prisma.attendance.findMany({
+        where,
+        include: { 
+          employee: { 
+            select: { 
+              id: true, 
+              name: true, 
+              employeeId: true,
+              basicSalary: true,
+              hra: true,
+              foodAllowance: true,
+              conveyanceAllowance: true,
+              otherAllowances: true
+            } 
           } 
-        } 
-      },
-      orderBy: [
-        { year: 'desc' },
-        { month: 'desc' },
-        { createdAt: 'desc' }
-      ],
-    })
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' },
+          { createdAt: 'desc' }
+        ],
+      })
+    });
 
     return NextResponse.json(records)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching attendance:', error)
+    
+    // Check if it's a database connection error
+    if (error.message?.includes('database server') || error.code === 'P1001') {
+      return NextResponse.json(
+        { error: 'Database connection failed. Please try again later.' },
+        { status: 503 } // Service Unavailable
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch attendance records' },
       { status: 500 }
@@ -66,50 +99,67 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if attendance record already exists for this employee, month, year
-    const existing = await prisma.attendance.findFirst({
-      where: {
-        employeeId,
-        month,
-        year: parseInt(year)
-      }
-    })
+    const record = await withRetry(async () => {
+      // Check if attendance record already exists for this employee, month, year
+      const existing = await prisma.attendance.findFirst({
+        where: {
+          employeeId,
+          month,
+          year: parseInt(year)
+        }
+      })
 
-    if (existing) {
+      if (existing) {
+        throw new Error('Attendance record already exists for this employee and period')
+      }
+
+      return await prisma.attendance.create({ 
+        data: {
+          employeeId,
+          month,
+          year: parseInt(year),
+          presentDays: parseInt(presentDays),
+          totalDays: parseInt(totalDays),
+          overtimeHours: parseFloat(overtimeHours) || 0,
+          leavesTaken: parseInt(leavesTaken) || 0,
+          shiftAllowance: parseFloat(shiftAllowance) || 0
+        },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              name: true,
+              employeeId: true,
+              basicSalary: true,
+              hra: true,
+              foodAllowance: true,
+              conveyanceAllowance: true,
+              otherAllowances: true
+            }
+          }
+        }
+      })
+    });
+    
+    return NextResponse.json(record, { status: 201 })
+  } catch (error: any) {
+    console.error('Error creating attendance:', error)
+    
+    // Handle specific errors
+    if (error.message?.includes('already exists')) {
       return NextResponse.json(
         { error: 'Attendance record already exists for this employee and period' },
         { status: 409 }
       )
     }
-
-    const record = await prisma.attendance.create({ 
-      data: {
-        employeeId,
-        month,
-        year: parseInt(year),
-        presentDays: parseInt(presentDays),
-        totalDays: parseInt(totalDays),
-        overtimeHours: parseFloat(overtimeHours) || 0,
-        leavesTaken: parseInt(leavesTaken) || 0,
-        shiftAllowance: parseFloat(shiftAllowance) || 0
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            name: true,
-            employeeId: true,
-            basicSalary: true,
-            hra: true,
-            allowances: true
-          }
-        }
-      }
-    })
     
-    return NextResponse.json(record, { status: 201 })
-  } catch (error) {
-    console.error('Error creating attendance:', error)
+    if (error.message?.includes('database server') || error.code === 'P1001') {
+      return NextResponse.json(
+        { error: 'Database connection failed. Please try again later.' },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create attendance record' },
       { status: 500 }

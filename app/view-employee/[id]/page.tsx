@@ -19,9 +19,18 @@ import {
   CreditCard,
   FileText,
   Printer,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react"
 import { usePayrollData } from "@/hooks/usePayrollData"
 import type { Employee } from "@/types/payroll"
+
+interface ExtendedEmployee extends Employee {
+  totalEarnings?: number
+  totalDeductions?: number
+  netSalary?: number
+}
 
 export default function ViewEmployeePage() {
   const router = useRouter()
@@ -29,7 +38,7 @@ export default function ViewEmployeePage() {
   const employeeId = params.id as string
 
   const { employees } = usePayrollData()
-  const [employee, setEmployee] = useState<Employee | null>(null)
+  const [employee, setEmployee] = useState<ExtendedEmployee | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,59 +47,47 @@ export default function ViewEmployeePage() {
     const foundEmployee = employees.find((emp) => emp.id === employeeId)
     if (foundEmployee) {
       try {
-        const totalSalary = Number(foundEmployee.basicSalary) + Number(foundEmployee.hra) + Number(foundEmployee.allowances)
-        const basicSalary = Number(foundEmployee.basicSalary)
-        const hra = Number(foundEmployee.hra) 
-        const allowances = Number(foundEmployee.allowances)
-        const salary = basicSalary + hra + allowances
+        // Calculate all salary components using the updated schema
+        const totalEarnings = (
+          Number(foundEmployee.basicSalary || 0) +
+          Number(foundEmployee.specialBasic || 0) +
+          Number(foundEmployee.dearnessAllowance || 0) +
+          Number(foundEmployee.hra || 0) +
+          Number(foundEmployee.foodAllowance || 0) +
+          Number(foundEmployee.conveyanceAllowance || 0) +
+          Number(foundEmployee.officeWearAllowance || 0) +
+          Number(foundEmployee.bonus || 0) +
+          Number(foundEmployee.leaveWithWages || 0) +
+          Number(foundEmployee.otherAllowances || 0) +
+          Number(foundEmployee.rateOfWages || 0)
+        )
+        
+        const totalDeductions = (
+          Number(foundEmployee.pfDeduction || 0) +
+          Number(foundEmployee.esicDeduction || 0) +
+          Number(foundEmployee.societyDeduction || 0) +
+          Number(foundEmployee.incomeTaxDeduction || 0) +
+          Number(foundEmployee.insuranceDeduction || 0) +
+          Number(foundEmployee.otherRecoveries || 0)
+        )
+        
+        const netSalary = totalEarnings - totalDeductions
 
-        const formatDate = (date: any): string => {
-          if (!date) return ""
-          try {
-            const dateObj = typeof date === 'string' ? new Date(date) : date
-            if (isNaN(dateObj.getTime())) return ""
-            return dateObj.toISOString().split('T')[0]
-          } catch {
-            return ""
-          }
-        }
-
-        const employeeData: Employee = {
-          id: foundEmployee.id,
-          employeeId: foundEmployee.employeeId,
-          name: foundEmployee.name,
-          email: foundEmployee.email,
-          phone: foundEmployee.phone,
-          department: foundEmployee.department,
-          designation: foundEmployee.designation,
-          company: foundEmployee.company,
-          location: foundEmployee.location || "",
-          grade: foundEmployee.grade || "",
-          status: foundEmployee.status,
-          joiningDate: formatDate(foundEmployee.joiningDate),
-          dateOfBirth: formatDate(foundEmployee.dateOfBirth),
-          basicSalary,
-          hra,
-          allowances,
-          salary,
-          pan: foundEmployee.pan || "",
-          aadhaar: foundEmployee.aadhaar || "",
-          uan: foundEmployee.uan || "",
-          esicNumber: foundEmployee.esicNumber || "",
-          pfOptIn: foundEmployee.pfOptIn,
-          esiApplicable: foundEmployee.esiApplicable,
-          lwfState: foundEmployee.lwfState || "",
-          bankAccount: foundEmployee.bankAccount || "",
-          ifsc: foundEmployee.ifsc || "",
-          branch: foundEmployee.branch || "",
-          profilePic: foundEmployee.profilePic || "",
+        const employeeData: ExtendedEmployee = {
+          ...foundEmployee,
+          totalEarnings,
+          totalDeductions,
+          netSalary,
         }
         setEmployee(employeeData)
       } catch (error) {
+        console.error("Error processing employee data:", error)
         setError("Failed to fetch employee data")
       } finally {
         setIsLoading(false)
       }
+    } else {
+      setIsLoading(false)
     }
   }, [employees, employeeId])
 
@@ -162,7 +159,7 @@ export default function ViewEmployeePage() {
   return (
     <div className="min-h-screen bg-gray-50">
         {/* HEADER */}
-        <div className="p-6 max-w-4xl mx-auto">
+        <div className="p-6 max-w-6xl mx-auto">
           <div className="no-print">
             <Button variant="ghost" onClick={() => router.push("/?tab=hr-data")} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -276,35 +273,120 @@ export default function ViewEmployeePage() {
                 </CardContent>
               </Card>
 
-              {/* Salary Information */}
+              {/* Salary Summary */}
               <Card className="card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <IndianRupee className="h-5 w-5" />
-                    Salary Information
+                    <PieChart className="h-5 w-5" />
+                    Salary Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Basic Salary</span>
-                      <span className="font-medium">{formatCurrency(employee.basicSalary)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 flex items-center gap-1">
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        Total Earnings
+                      </span>
+                      <span className="font-medium text-green-600">{formatCurrency(employee.totalEarnings || 0)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">HRA</span>
-                      <span className="font-medium">{formatCurrency(employee.hra)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Allowances</span>
-                      <span className="font-medium">{formatCurrency(employee.allowances)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 flex items-center gap-1">
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                        Total Deductions
+                      </span>
+                      <span className="font-medium text-red-600">{formatCurrency(employee.totalDeductions || 0)}</span>
                     </div>
                     <div className="border-t pt-3">
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Total Salary</span>
-                        <span className="font-bold text-green-600">{formatCurrency(employee.salary)}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">Net Salary</span>
+                        <span className="font-bold text-blue-600">{formatCurrency(employee.netSalary || 0)}</span>
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Earnings Details */}
+              <Card className="card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                    Earnings Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: "Basic Salary", value: employee.basicSalary },
+                    { label: "Special Basic", value: employee.specialBasic },
+                    { label: "Dearness Allowance (DA)", value: employee.dearnessAllowance },
+                    { label: "House Rent Allowance (HRA)", value: employee.hra },
+                    { label: "Overtime Rate", value: employee.overtimeRate },
+                    { label: "Food Allowance", value: employee.foodAllowance },
+                    { label: "Conveyance Allowance", value: employee.conveyanceAllowance },
+                    { label: "Office Wear Allowance", value: employee.officeWearAllowance },
+                    { label: "Bonus", value: employee.bonus },
+                    { label: "Leave With Wages", value: employee.leaveWithWages },
+                    { label: "Other Allowances", value: employee.otherAllowances },
+                    { label: "Rate of Wages", value: employee.rateOfWages },
+                  ].map((item) => (
+                    item.value > 0 && (
+                      <div key={item.label} className="flex justify-between">
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-medium">{formatCurrency(item.value)}</span>
+                      </div>
+                    )
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Deductions Details */}
+              <Card className="card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingDown className="h-5 w-5 text-red-500" />
+                    Deductions Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: "Provident Fund (PF)", value: employee.pfDeduction },
+                    { label: "ESIC", value: employee.esicDeduction },
+                    { label: "Society Deduction", value: employee.societyDeduction },
+                    { label: "Income Tax", value: employee.incomeTaxDeduction },
+                    { label: "Insurance", value: employee.insuranceDeduction },
+                    { label: "Other Recoveries", value: employee.otherRecoveries },
+                  ].map((item) => (
+                    item.value > 0 && (
+                      <div key={item.label} className="flex justify-between">
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-medium text-red-600">-{formatCurrency(item.value)}</span>
+                      </div>
+                    )
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Employer Contributions */}
+              <Card className="card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-blue-500" />
+                    Employer Contributions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: "Employer PF Contribution", value: employee.employerPfContribution },
+                    { label: "Employer ESIC Contribution", value: employee.employerEsicContribution },
+                  ].map((item) => (
+                    item.value > 0 && (
+                      <div key={item.label} className="flex justify-between">
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-medium text-blue-600">{formatCurrency(item.value)}</span>
+                      </div>
+                    )
+                  ))}
                 </CardContent>
               </Card>
 
@@ -384,6 +466,18 @@ export default function ViewEmployeePage() {
                       <label className="text-sm font-medium text-gray-500">Branch</label>
                       <p className="font-medium">{employee.branch || "Not provided"}</p>
                     </div>
+                    {employee.lastTransactionId && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Last Transaction ID</label>
+                        <p className="font-medium font-mono">{employee.lastTransactionId}</p>
+                      </div>
+                    )}
+                    {employee.lastPaymentDate && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Last Payment Date</label>
+                        <p className="font-medium">{formatDate(employee.lastPaymentDate)}</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

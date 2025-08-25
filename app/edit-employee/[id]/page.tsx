@@ -143,6 +143,26 @@ export default function EditEmployeePage() {
     }
   }
 
+  const handleDelete = async (employeeId: string) => {
+    try {
+      const response = await fetch(`/api/employees/${employeeId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete employee')
+      }
+      
+      alert('Employee deleted successfully!')
+      router.push('/')
+    } catch (err) {
+      console.error('Error deleting employee:', err)
+      alert(err instanceof Error ? err.message : 'Failed to delete employee')
+      throw err // Re-throw to be handled by the component
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -182,6 +202,7 @@ export default function EditEmployeePage() {
       employee={employee as Employee}
       onSave={handleSave}
       onCancel={handleCancel}
+      onDelete={handleDelete}
       isEditing={true}
       isSaving={isSaving}
       isDraft={isDraft}

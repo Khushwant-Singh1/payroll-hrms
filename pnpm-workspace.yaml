@@ -5,3 +5,4 @@ onlyBuiltDependencies:
   - postgresql
   - prisma
   - sharp
+  - unrs-resolver

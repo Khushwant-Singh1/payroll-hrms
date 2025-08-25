@@ -7,26 +7,58 @@ export interface Employee {
   department: string
   designation: string
   company: string
-  location: string
-  grade: string
+  location?: string
+  grade?: string
   status: "active" | "inactive"
   joiningDate: string
   dateOfBirth?: string
+  
+  // Salary Components
   basicSalary: number
+  specialBasic: number
+  dearnessAllowance: number
   hra: number
-  allowances: number
-  salary: number
-  pan: string
-  aadhaar: string
-  uan: string
-  esicNumber: string
+  overtimeRate: number
+  foodAllowance: number
+  conveyanceAllowance: number
+  officeWearAllowance: number
+  bonus: number
+  leaveWithWages: number
+  otherAllowances: number
+  rateOfWages: number
+
+  // Deductions (Employee Share)
+  pfDeduction: number
+  esicDeduction: number
+  societyDeduction: number
+  incomeTaxDeduction: number
+  insuranceDeduction: number
+  otherRecoveries: number
+
+  // Employer Contributions
+  employerPfContribution: number
+  employerEsicContribution: number
+
+  // Payment Details
+  bankAccount?: string
+  ifsc?: string
+  branch?: string
+  lastTransactionId?: string
+  lastPaymentDate?: string
+
+  // Additional Fields
+  pan?: string
+  aadhaar?: string
+  uan?: string
+  esicNumber?: string
   pfOptIn: boolean
   esiApplicable: boolean
-  lwfState: string
-  bankAccount: string
-  ifsc: string
-  branch: string
+  lwfState?: string
   profilePic?: string
+  
+  // Legacy fields for backward compatibility
+  allowances?: number
+  salary?: number
 }
 
 export interface AttendanceRecord {

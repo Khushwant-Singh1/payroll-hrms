@@ -29,10 +29,10 @@ import {
   X,
   RotateCcw,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { Employee } from "../types/payroll";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-
 
 // Custom debounce function to replace lodash dependency
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
@@ -48,7 +48,7 @@ function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
   return debounced;
 }
 
-/* -------------------- Zod schemas -------------------- */
+/* -------------------- Updated Zod schema -------------------- */
 const employeeSchema = z.object({
   employeeId: z.string().min(1, "Employee ID is required"),
   name: z.string().min(1, "Name is required"),
@@ -62,9 +62,41 @@ const employeeSchema = z.object({
   status: z.enum(["active", "inactive"]).default("active"),
   joiningDate: z.string().min(1, "Joining date required"),
   dateOfBirth: z.string().optional(),
+  
+  // Salary Components
   basicSalary: z.number().min(0).default(0),
+  specialBasic: z.number().min(0).default(0),
+  dearnessAllowance: z.number().min(0).default(0),
   hra: z.number().min(0).default(0),
-  allowances: z.number().min(0).default(0),
+  overtimeRate: z.number().min(0).default(0),
+  foodAllowance: z.number().min(0).default(0),
+  conveyanceAllowance: z.number().min(0).default(0),
+  officeWearAllowance: z.number().min(0).default(0),
+  bonus: z.number().min(0).default(0),
+  leaveWithWages: z.number().min(0).default(0),
+  otherAllowances: z.number().min(0).default(0),
+  rateOfWages: z.number().min(0).default(0),
+  
+  // Deductions (Employee Share)
+  pfDeduction: z.number().min(0).default(0),
+  esicDeduction: z.number().min(0).default(0),
+  societyDeduction: z.number().min(0).default(0),
+  incomeTaxDeduction: z.number().min(0).default(0),
+  insuranceDeduction: z.number().min(0).default(0),
+  otherRecoveries: z.number().min(0).default(0),
+  
+  // Employer Contributions
+  employerPfContribution: z.number().min(0).default(0),
+  employerEsicContribution: z.number().min(0).default(0),
+  
+  // Payment Details
+  bankAccount: z.string().optional(),
+  ifsc: z.string().optional(),
+  branch: z.string().optional(),
+  lastTransactionId: z.string().optional(),
+  lastPaymentDate: z.string().optional(),
+  
+  // Additional Fields
   pan: z.string().optional(),
   aadhaar: z.string().optional(),
   uan: z.string().optional(),
@@ -72,9 +104,6 @@ const employeeSchema = z.object({
   pfOptIn: z.boolean().default(true),
   esiApplicable: z.boolean().default(true),
   lwfState: z.string().optional(),
-  bankAccount: z.string().optional(),
-  ifsc: z.string().optional(),
-  branch: z.string().optional(),
   profilePic: z.string().optional(),
 });
 
@@ -85,10 +114,11 @@ interface EmployeeFormProps {
   employee?: Employee;
   onSave: (employee: EmployeeInput) => void;
   onCancel: () => void;
+  onDelete?: (employeeId: string) => void;
   isEditing?: boolean;
   isSaving?: boolean;
-  isDraft?: boolean; // New prop to indicate if we're editing a draft
-  draftId?: string; // ID of the draft being edited
+  isDraft?: boolean;
+  draftId?: string;
 }
 
 /* -------------------- helpers -------------------- */
@@ -105,9 +135,41 @@ const defaultData: EmployeeInput = {
   status: "active",
   joiningDate: "",
   dateOfBirth: "",
+  
+  // Salary Components
   basicSalary: 0,
+  specialBasic: 0,
+  dearnessAllowance: 0,
   hra: 0,
-  allowances: 0,
+  overtimeRate: 0,
+  foodAllowance: 0,
+  conveyanceAllowance: 0,
+  officeWearAllowance: 0,
+  bonus: 0,
+  leaveWithWages: 0,
+  otherAllowances: 0,
+  rateOfWages: 0,
+  
+  // Deductions
+  pfDeduction: 0,
+  esicDeduction: 0,
+  societyDeduction: 0,
+  incomeTaxDeduction: 0,
+  insuranceDeduction: 0,
+  otherRecoveries: 0,
+  
+  // Employer Contributions
+  employerPfContribution: 0,
+  employerEsicContribution: 0,
+  
+  // Payment Details
+  bankAccount: "",
+  ifsc: "",
+  branch: "",
+  lastTransactionId: "",
+  lastPaymentDate: "",
+  
+  // Additional Fields
   pan: "",
   aadhaar: "",
   uan: "",
@@ -115,9 +177,6 @@ const defaultData: EmployeeInput = {
   pfOptIn: true,
   esiApplicable: true,
   lwfState: "",
-  bankAccount: "",
-  ifsc: "",
-  branch: "",
   profilePic: "",
 };
 
@@ -137,7 +196,7 @@ const loadDraft = (key: string): Partial<EmployeeInput> | null => {
 
 const clearDraft = (key: string) => localStorage.removeItem(key);
 
-// New helper for database drafts
+// Helper for database drafts
 const saveDBDraft = async (draftId: string | null, data: Partial<EmployeeInput>) => {
   try {
     const method = draftId ? "PUT" : "POST";
@@ -162,6 +221,7 @@ export function EmployeeForm({
   employee,
   onSave,
   onCancel,
+  onDelete,
   isEditing = false,
   isSaving = false,
   isDraft = false,
@@ -169,25 +229,23 @@ export function EmployeeForm({
 }: EmployeeFormProps) {
   /* ---------- state ---------- */
   const [data, setData] = useState<EmployeeInput>(() => {
-    // If editing a draft, use the passed employee data
     if (isDraft && employee) {
       return { ...defaultData, ...employee };
     }
     
-    // Otherwise, try to load from localStorage for regular editing
     const draft = loadDraft(getDraftKey(employee?.id));
     return { ...defaultData, ...employee, ...draft };
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const draftKey = getDraftKey(employee?.id);
 
   /* ---------- auto-save draft ---------- */
   const debouncedSave = useRef(
     debounce((partial: Partial<EmployeeInput>) => {
-      // Only auto-save to localStorage for regular forms, not drafts
       if (!isDraft) {
         const partialSchema = employeeSchema.partial();
         const safe = partialSchema.safeParse(partial);
@@ -216,11 +274,9 @@ export function EmployeeForm({
     setIsSavingDraft(true);
     try {
       if (isDraft) {
-        // Save to database if editing a draft
         await saveDBDraft(draftId || null, data);
         alert("Draft updated successfully!");
       } else {
-        // Save to localStorage for regular forms
         saveDraft(draftKey, data);
         alert("Draft saved locally!");
       }
@@ -236,7 +292,6 @@ export function EmployeeForm({
     try {
       const newDraft = await saveDBDraft(null, data);
       alert("Draft saved to database successfully!");
-      // Optionally redirect to the draft editing page
       window.location.href = `/edit-employee/${newDraft.id}?draft=true`;
     } catch (error) {
       alert("Failed to save draft to database");
@@ -262,7 +317,6 @@ export function EmployeeForm({
 
     console.log("Validation passed, calling onSave with:", result.data);
     
-    // Clear local draft only if not editing a database draft
     if (!isDraft) {
       clearDraft(draftKey);
     }
@@ -270,10 +324,69 @@ export function EmployeeForm({
     onSave(result.data);
   };
 
+  const handleDelete = async () => {
+    if (!employee?.id || !onDelete) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${employee.name}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(employee.id);
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Calculate totals for display
+  const totalEarnings = (
+    Number(data.basicSalary || 0) +
+    Number(data.specialBasic || 0) +
+    Number(data.dearnessAllowance || 0) +
+    Number(data.hra || 0) +
+    Number(data.foodAllowance || 0) +
+    Number(data.conveyanceAllowance || 0) +
+    Number(data.officeWearAllowance || 0) +
+    Number(data.bonus || 0) +
+    Number(data.leaveWithWages || 0) +
+    Number(data.otherAllowances || 0) +
+    Number(data.rateOfWages || 0)
+  );
+
+  const totalDeductions = (
+    Number(data.pfDeduction || 0) +
+    Number(data.esicDeduction || 0) +
+    Number(data.societyDeduction || 0) +
+    Number(data.incomeTaxDeduction || 0) +
+    Number(data.insuranceDeduction || 0) +
+    Number(data.otherRecoveries || 0)
+  );
+
+  const netSalary = totalEarnings - totalDeductions;
+
+  // Debug logging to identify calculation issues
+  console.log('Salary calculation debug:', {
+    totalEarnings,
+    totalDeductions,
+    netSalary,
+    data: {
+      basicSalary: data.basicSalary,
+      specialBasic: data.specialBasic,
+      dearnessAllowance: data.dearnessAllowance,
+      hra: data.hra,
+      rateOfWages: data.rateOfWages
+    }
+  });
+
   /* ---------- render ---------- */
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* header */}
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -293,6 +406,27 @@ export function EmployeeForm({
               </div>
             </div>
             <div className="flex gap-2">
+              {isEditing && employee?.id && onDelete && (
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  disabled={isDeleting || isSaving}
+                  className="mr-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              )}
+              
               <Button 
                 variant="outline" 
                 onClick={manualSaveDraft}
@@ -352,9 +486,7 @@ export function EmployeeForm({
           </CardHeader>
         </Card>
 
-        {/* rest of the form stays identical, just use handleChange / data / errors */}
-        {/* … all existing cards (Basic Info, Statutory, Company, Salary, Bank, Address, Status) … */}
-        {/* For brevity only one representative card shown below */}
+        {/* Basic Information */}
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -454,33 +586,27 @@ export function EmployeeForm({
                       const file = e.target.files?.[0];
                       if (!file) return;
 
-                      // Check configuration before attempting upload
-                   
-                    setIsUploading(true);
+                      setIsUploading(true);
                       try {
                         const formData = new FormData();
-formData.append("file", file);
+                        formData.append("file", file);
 
-const res = await fetch("/api/upload", { method: "POST", body: formData });
-const data = await res.json();
+                        const res = await fetch("/api/upload", { method: "POST", body: formData });
+                        const data = await res.json();
 
-if (data.url) {
-  handleChange("profilePic", data.url);
-  alert("Profile picture uploaded successfully!");
-} else {
-  alert("Upload failed");
-}
-
-                        
-                        // Show success message
-                        alert("Profile picture uploaded successfully!");
+                        if (data.url) {
+                          handleChange("profilePic", data.url);
+                          alert("Profile picture uploaded successfully!");
+                        } else {
+                          alert("Upload failed");
+                        }
                       } catch (error) {
                         console.error("Upload failed:", error);
                         const errorMessage = error instanceof Error ? error.message : "Upload failed";
                         alert(`Upload failed: ${errorMessage}`);
                       } finally {
                         setIsUploading(false);
-                        e.target.value = ""; // allow re-upload
+                        e.target.value = "";
                       }
                     }}
                     className="hidden"
@@ -498,8 +624,6 @@ if (data.url) {
                 <p className="text-sm text-gray-500">
                   Upload a photo (max 5MB). Supported formats: JPG, PNG, GIF
                 </p>
-               
-              
               </div>
             </div>
           </CardContent>
@@ -560,54 +684,136 @@ if (data.url) {
 
         {/* Salary Information */}
         <Card>
+  <CardHeader>
+    <CardTitle>Salary Information</CardTitle>
+    <CardDescription>
+      Enter all salary components and allowances
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {([
+      { key: "basicSalary", label: "Basic Salary" },
+      { key: "specialBasic", label: "Special Basic" },
+      { key: "dearnessAllowance", label: "Dearness Allowance (DA)" },
+      { key: "hra", label: "House Rent Allowance (HRA)" },
+      { key: "overtimeRate", label: "Overtime Rate" },
+      { key: "foodAllowance", label: "Food Allowance" },
+      { key: "conveyanceAllowance", label: "Conveyance Allowance" },
+      { key: "officeWearAllowance", label: "Office Wear Allowance" },
+      { key: "bonus", label: "Bonus" },
+      { key: "leaveWithWages", label: "Leave With Wages" },
+      { key: "otherAllowances", label: "Other Allowances" },
+      { key: "rateOfWages", label: "Rate of Wages" }, // Added rate of wages field
+    ] as const).map(({ key, label }) => (
+      <div key={key}>
+        <Label>{label}</Label>
+        <Input
+          type="number"
+          value={data[key] || 0}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const value = parseFloat(e.target.value) || 0;
+            // Prevent extremely large values (max 10 crores)
+            const sanitizedValue = Math.min(value, 100000000);
+            handleChange(key, sanitizedValue);
+          }}
+          className={errors[key] ? "border-red-500" : ""}
+          min="0"
+          max="100000000"
+          step="0.01"
+        />
+        {errors[key] && (
+          <p className="text-sm text-red-500">{errors[key]}</p>
+        )}
+      </div>
+    ))}
+    
+    <div className="col-span-full p-3 bg-blue-50 rounded-md">
+      <h4 className="font-medium mb-2">Salary Summary</h4>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <p className="text-sm text-gray-600">Total Earnings:</p>
+          <p className="font-semibold">₹{totalEarnings.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-600">Total Deductions:</p>
+          <p className="font-semibold">₹{totalDeductions.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-600">Net Salary:</p>
+          <p className="font-semibold text-green-600">₹{netSalary.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p>
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
+        {/* Deductions */}
+        <Card>
           <CardHeader>
-            <CardTitle>Salary Information</CardTitle>
+            <CardTitle>Deductions (Employee Share)</CardTitle>
+            <CardDescription>
+              Employee contribution deductions
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Basic Salary *</Label>
-              <Input
-                type="number"
-                value={data.basicSalary}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("basicSalary", parseFloat(e.target.value) || 0)
-                }
-                className={errors.basicSalary ? "border-red-500" : ""}
-              />
-              {errors.basicSalary && (
-                <p className="text-sm text-red-500">{errors.basicSalary}</p>
-              )}
-            </div>
-            <div>
-              <Label>HRA</Label>
-              <Input
-                type="number"
-                value={data.hra}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("hra", parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-            <div>
-              <Label>Allowances</Label>
-              <Input
-                type="number"
-                value={data.allowances}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("allowances", parseFloat(e.target.value) || 0)
-                }
-              />
-            </div>
-            <div className="col-span-full">
-              <p className="text-sm text-gray-600">
-                Total Salary: ₹
-                {(
-                  (data.basicSalary || 0) +
-                  (data.hra || 0) +
-                  (data.allowances || 0)
-                ).toLocaleString("en-IN")}
-              </p>
-            </div>
+            {([
+              { key: "pfDeduction", label: "Provident Fund (PF)" },
+              { key: "esicDeduction", label: "ESIC" },
+              { key: "societyDeduction", label: "Society" },
+              { key: "incomeTaxDeduction", label: "Income Tax" },
+              { key: "insuranceDeduction", label: "Insurance" },
+              { key: "otherRecoveries", label: "Other Recoveries" },
+            ] as const).map(({ key, label }) => (
+              <div key={key}>
+                <Label>{label}</Label>
+                <Input
+                  type="number"
+                  value={data[key] || 0}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    // Prevent extremely large values (max 10 crores)
+                    const sanitizedValue = Math.min(value, 100000000);
+                    handleChange(key, sanitizedValue);
+                  }}
+                  min="0"
+                  max="100000000"
+                  step="0.01"
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Employer Contributions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employer Contributions</CardTitle>
+            <CardDescription>
+              Employer statutory contributions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {([
+              { key: "employerPfContribution", label: "Employer PF Contribution" },
+              { key: "employerEsicContribution", label: "Employer ESIC Contribution" },
+            ] as const).map(({ key, label }) => (
+              <div key={key}>
+                <Label>{label}</Label>
+                <Input
+                  type="number"
+                  value={data[key] || 0}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    // Prevent extremely large values (max 10 crores)
+                    const sanitizedValue = Math.min(value, 100000000);
+                    handleChange(key, sanitizedValue);
+                  }}
+                  min="0"
+                  max="100000000"
+                  step="0.01"
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -653,6 +859,31 @@ if (data.url) {
                 }
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="pf-opt-in"
+                checked={data.pfOptIn}
+                onCheckedChange={(checked) => handleChange("pfOptIn", checked)}
+              />
+              <Label htmlFor="pf-opt-in">PF Opt-in</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="esi-applicable"
+                checked={data.esiApplicable}
+                onCheckedChange={(checked) => handleChange("esiApplicable", checked)}
+              />
+              <Label htmlFor="esi-applicable">ESI Applicable</Label>
+            </div>
+            <div>
+              <Label>LWF State</Label>
+              <Input
+                value={data.lwfState || ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange("lwfState", e.target.value)
+                }
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -689,17 +920,58 @@ if (data.url) {
                 }
               />
             </div>
+            <div>
+              <Label>Last Transaction ID</Label>
+              <Input
+                value={data.lastTransactionId || ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange("lastTransactionId", e.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Last Payment Date</Label>
+              <Input
+                type="date"
+                value={data.lastPaymentDate || ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange("lastPaymentDate", e.target.value)
+                }
+              />
+            </div>
           </CardContent>
         </Card>
 
-        {/* … remaining cards identical to previous answer … */}
-
-        <div className="flex justify-end gap-2 pb-6">
-          <Button 
-            variant="outline" 
-            onClick={manualSaveDraft}
-            disabled={isSavingDraft}
-          >
+        {/* Footer buttons */}
+        <div className="flex justify-between pb-6">
+          <div>
+            {isEditing && employee?.id && onDelete && (
+              <Button 
+                variant="destructive" 
+                onClick={handleDelete}
+                disabled={isDeleting || isSaving}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete Employee
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={manualSaveDraft}
+              disabled={isSavingDraft}
+            >
             {isSavingDraft ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -750,6 +1022,7 @@ if (data.url) {
               </>
             )}
           </Button>
+          </div>
         </div>
       </div>
     </div>

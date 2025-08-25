@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Plus, Search, Edit, Eye, User } from "lucide-react"
+import { Users, Plus, Search, Edit, Eye, User, Trash2, Loader2 } from "lucide-react"
 import type { Employee } from "../types/payroll"
 
 interface EmployeeListProps {
@@ -15,6 +15,7 @@ interface EmployeeListProps {
   onAddEmployee?: () => void
   onEditEmployee?: (employee: Employee) => void
   onViewEmployee?: (employee: Employee) => void
+  onDeleteEmployee?: (employeeId: string) => void
 }
 
 export function EmployeeList({
@@ -22,8 +23,10 @@ export function EmployeeList({
   onAddEmployee = () => {},
   onEditEmployee = () => {},
   onViewEmployee = () => {},
+  onDeleteEmployee = () => {},
 }: EmployeeListProps) {
   const [searchTerm, setSearchTerm] = useState("")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filteredEmployees = employees.filter(
     (emp) =>
@@ -39,6 +42,23 @@ export function EmployeeList({
       currency: "INR",
       minimumFractionDigits: 0,
     }).format(amount)
+  }
+
+  const handleDelete = async (employee: Employee) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${employee.name}? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    setDeletingId(employee.id);
+    try {
+      await onDeleteEmployee(employee.id);
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -111,7 +131,7 @@ export function EmployeeList({
                 <div>
                   <div className="text-2xl font-bold">
                     {employees.length > 0
-                      ? formatCurrency(employees.reduce((sum, e) => sum + e.salary, 0) / employees.length)
+                      ? formatCurrency(employees.reduce((sum, e) => sum + (e.salary || 0), 0) / employees.length)
                       : "₹0"}
                   </div>
                   <div className="text-sm text-gray-600">Avg. Salary</div>
@@ -176,19 +196,32 @@ export function EmployeeList({
                       <TableCell>{employee.company}</TableCell>
                       <TableCell>{employee.designation}</TableCell>
                       <TableCell>{employee.location}</TableCell>
-                      <TableCell>{formatCurrency(employee.salary)}</TableCell>
+                      <TableCell>{formatCurrency(employee.salary || 0)}</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === "active" ? "default" : "secondary"}>
                           {employee.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2 cursor-pointer">
+                        <div className="flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => onViewEmployee(employee)} className="cursor-pointer">
                             <Eye className="h-3 w-3" />
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => onEditEmployee(employee)} className="cursor-pointer">
                             <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => handleDelete(employee)} 
+                            disabled={deletingId === employee.id}
+                            className="cursor-pointer"
+                          >
+                            {deletingId === employee.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
