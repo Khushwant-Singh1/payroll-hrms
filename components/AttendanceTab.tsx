@@ -200,7 +200,7 @@ export function AttendanceTab({
               )}
               <Button 
                 onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto cursor-pointer"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Attendance

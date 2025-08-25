@@ -82,8 +82,23 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
   useEffect(() => {
     const { totalDaysInMonth } = monthDetails;
     
+    // Calculate total salary from all components based on new schema
+    const totalSalary = (
+      Number(employee.basicSalary || 0) +
+      Number(employee.specialBasic || 0) +
+      Number(employee.dearnessAllowance || 0) +
+      Number(employee.hra || 0) +
+      Number(employee.overtimeRate || 0) +
+      Number(employee.foodAllowance || 0) +
+      Number(employee.conveyanceAllowance || 0) +
+      Number(employee.officeWearAllowance || 0) +
+      Number(employee.bonus || 0) +
+      Number(employee.leaveWithWages || 0) +
+      Number(employee.otherAllowances || 0) +
+      Number(employee.rateOfWages || 0)
+    );
+    
     // Safety checks to prevent NaN
-    const employeeSalary = employee.salary || 0;
     const validTotalDays = totalDaysInMonth > 0 ? totalDaysInMonth : 30; // fallback to 30 days
     const validPresentDays = presentDays >= 0 ? presentDays : 0;
     const validAbsentDays = absentDays >= 0 ? absentDays : 0;
@@ -91,7 +106,7 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
     const validNightShiftDays = nightShiftDays >= 0 ? nightShiftDays : 0;
     const validHazardPay = hazardPay >= 0 ? hazardPay : 0;
     
-    const perDayGross = employeeSalary / validTotalDays;
+    const perDayGross = totalSalary / validTotalDays;
     const calculatedGross = perDayGross * validPresentDays;
     const lopAmount = perDayGross * validAbsentDays;
     const overtimePay = validOvertimeHours * 500;
@@ -107,7 +122,7 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
       nightShiftPay: isNaN(nightShiftPay) ? 0 : nightShiftPay,
       totalGross: isNaN(totalGross) ? 0 : totalGross,
     });
-  }, [presentDays, overtimeHours, nightShiftDays, hazardPay, employee.salary, monthDetails, absentDays]);
+  }, [presentDays, overtimeHours, nightShiftDays, hazardPay, employee, monthDetails, absentDays]);
 
 
   // --- HANDLERS ---
@@ -326,7 +341,7 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                       onChange={(e) => setNewHolidayName(e.target.value)}
                       className="flex-1"
                     />
-                    <Button type="button" onClick={addCustomHoliday} size="sm">
+                    <Button type="button" onClick={addCustomHoliday} size="sm" className="cursor-pointer">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -435,7 +450,20 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
                 Salary Preview
               </CardTitle>
               <CardDescription>
-                Calculated salary based on attendance (Base Salary: {formatCurrency(employee.salary || 0)})
+                Calculated salary based on attendance (Total Monthly Salary: {formatCurrency(
+                  Number(employee.basicSalary || 0) +
+                  Number(employee.specialBasic || 0) +
+                  Number(employee.dearnessAllowance || 0) +
+                  Number(employee.hra || 0) +
+                  Number(employee.overtimeRate || 0) +
+                  Number(employee.foodAllowance || 0) +
+                  Number(employee.conveyanceAllowance || 0) +
+                  Number(employee.officeWearAllowance || 0) +
+                  Number(employee.bonus || 0) +
+                  Number(employee.leaveWithWages || 0) +
+                  Number(employee.otherAllowances || 0) +
+                  Number(employee.rateOfWages || 0)
+                )})
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -478,10 +506,10 @@ export function AttendanceInputModal({ isOpen, onClose, employee, onSave, existi
 
           {/* Form Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} className="cursor-pointer">
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="cursor-pointer">
               Save Attendance
             </Button>
           </div>

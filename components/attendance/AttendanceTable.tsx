@@ -70,7 +70,7 @@ export function AttendanceTable({
                         variant="outline"
                         onClick={() => onViewAttendance(rec)}
                         title="View Attendance Details"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer"
                       >
                         <Eye className="h-3 w-3 sm:h-3 sm:w-3" />
                       </Button>
@@ -85,7 +85,7 @@ export function AttendanceTable({
                           }
                         }}
                         title="Edit Attendance"
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer"
                       >
                         <Edit className="h-3 w-3 sm:h-3 sm:w-3" />
                       </Button>

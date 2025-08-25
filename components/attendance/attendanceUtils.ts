@@ -187,13 +187,45 @@ export function generateExcelExportData(
     const fullEmployee = employees.find((e) => e.id === rec.employeeId)
     const percentage = Math.round((rec.presentDays / rec.totalDays) * 100)
     
-    // Calculate salary impact based on attendance
-    const basicSalary = fullEmployee?.basicSalary || 0
-    const hra = fullEmployee?.hra || 0
-    const allowances = fullEmployee?.allowances || 0
-    const totalSalary = Number(basicSalary) + Number(hra) + Number(allowances)
-    const salaryEarned = (totalSalary * rec.presentDays) / rec.totalDays
-    const salaryLoss = totalSalary - salaryEarned
+    // Calculate total earnings based on new schema
+    const totalEarnings = fullEmployee ? (
+      Number(fullEmployee.basicSalary || 0) +
+      Number(fullEmployee.specialBasic || 0) +
+      Number(fullEmployee.dearnessAllowance || 0) +
+      Number(fullEmployee.hra || 0) +
+      Number(fullEmployee.overtimeRate || 0) +
+      Number(fullEmployee.foodAllowance || 0) +
+      Number(fullEmployee.conveyanceAllowance || 0) +
+      Number(fullEmployee.officeWearAllowance || 0) +
+      Number(fullEmployee.bonus || 0) +
+      Number(fullEmployee.leaveWithWages || 0) +
+      Number(fullEmployee.otherAllowances || 0) +
+      Number(fullEmployee.rateOfWages || 0)
+    ) : 0;
+
+    // Calculate total deductions based on new schema
+    const totalDeductions = fullEmployee ? (
+      Number(fullEmployee.pfDeduction || 0) +
+      Number(fullEmployee.esicDeduction || 0) +
+      Number(fullEmployee.societyDeduction || 0) +
+      Number(fullEmployee.incomeTaxDeduction || 0) +
+      Number(fullEmployee.insuranceDeduction || 0) +
+      Number(fullEmployee.otherRecoveries || 0)
+    ) : 0;
+
+    // Calculate net salary
+    const netSalary = totalEarnings - totalDeductions;
+    
+    // Calculate salary impact based on attendance (pro-rated based on present days)
+    const earnedSalary = (totalEarnings * rec.presentDays) / rec.totalDays;
+    const salaryLoss = totalEarnings - earnedSalary;
+    const netEarnedSalary = earnedSalary - totalDeductions;
+    
+    // Calculate overtime pay (assuming ₹500 per hour as per modal)
+    const overtimePay = Number(rec.overtimeHours) * 500;
+    
+    // Calculate final net pay including overtime and shift allowances
+    const finalNetPay = netEarnedSalary + overtimePay + Number(rec.shiftAllowance);
     
     return {
       "Employee ID": employee?.employeeId || "N/A",
@@ -203,6 +235,9 @@ export function generateExcelExportData(
       "Company": fullEmployee?.company || "N/A",
       "Location": fullEmployee?.location || "N/A",
       "Grade": fullEmployee?.grade || "N/A",
+      "Employment Status": fullEmployee?.status || "N/A",
+      
+      // Attendance Details
       "Month": rec.month,
       "Year": rec.year,
       "Present Days": rec.presentDays,
@@ -212,24 +247,72 @@ export function generateExcelExportData(
       "Attendance Category": percentage >= 90 ? "Excellent" : percentage >= 75 ? "Good" : percentage >= 60 ? "Average" : "Poor",
       "Overtime Hours": Number(rec.overtimeHours),
       "Shift Allowance": Number(rec.shiftAllowance),
-      "Basic Salary": Number(basicSalary),
-      "HRA": Number(hra),
-      "Other Allowances": Number(allowances),
-      "Total Monthly Salary": totalSalary,
-      "Salary Earned (Pro-rated)": Math.round(salaryEarned),
-      "Salary Loss": Math.round(salaryLoss),
+      
+      // Salary Components (Earnings)
+      "Basic Salary": Number(fullEmployee?.basicSalary || 0),
+      "Special Basic": Number(fullEmployee?.specialBasic || 0),
+      "Dearness Allowance (DA)": Number(fullEmployee?.dearnessAllowance || 0),
+      "House Rent Allowance (HRA)": Number(fullEmployee?.hra || 0),
+      "Overtime Rate": Number(fullEmployee?.overtimeRate || 0),
+      "Food Allowance": Number(fullEmployee?.foodAllowance || 0),
+      "Conveyance Allowance": Number(fullEmployee?.conveyanceAllowance || 0),
+      "Office Wear Allowance": Number(fullEmployee?.officeWearAllowance || 0),
+      "Bonus": Number(fullEmployee?.bonus || 0),
+      "Leave With Wages": Number(fullEmployee?.leaveWithWages || 0),
+      "Other Allowances": Number(fullEmployee?.otherAllowances || 0),
+      "Rate of Wages": Number(fullEmployee?.rateOfWages || 0),
+      "Total Earnings (Monthly)": totalEarnings,
+      
+      // Deductions
+      "PF Deduction": Number(fullEmployee?.pfDeduction || 0),
+      "ESIC Deduction": Number(fullEmployee?.esicDeduction || 0),
+      "Society Deduction": Number(fullEmployee?.societyDeduction || 0),
+      "Income Tax Deduction": Number(fullEmployee?.incomeTaxDeduction || 0),
+      "Insurance Deduction": Number(fullEmployee?.insuranceDeduction || 0),
+      "Other Recoveries": Number(fullEmployee?.otherRecoveries || 0),
+      "Total Deductions (Monthly)": totalDeductions,
+      
+      // Net Salary Calculations
+      "Net Salary (Monthly)": netSalary,
+      "Earned Salary (Pro-rated)": Math.round(earnedSalary),
+      "Salary Loss Due to Absence": Math.round(salaryLoss),
+      "Net Earned Salary": Math.round(netEarnedSalary),
+      "Overtime Pay": overtimePay,
+      "Final Net Pay (Including OT & Allowances)": Math.round(finalNetPay),
+      
+      // Employer Contributions
+      "Employer PF Contribution": Number(fullEmployee?.employerPfContribution || 0),
+      "Employer ESIC Contribution": Number(fullEmployee?.employerEsicContribution || 0),
+      
+      // Personal Details
       "Phone": fullEmployee?.phone || "N/A",
       "Email": fullEmployee?.email || "N/A",
       "Joining Date": fullEmployee?.joiningDate ? new Date(fullEmployee.joiningDate).toLocaleDateString() : "N/A",
-      "Employment Status": fullEmployee?.status || "N/A",
+      "Date of Birth": fullEmployee?.dateOfBirth ? new Date(fullEmployee.dateOfBirth).toLocaleDateString() : "N/A",
+      
+      // Statutory Information
+      "PAN": fullEmployee?.pan || "N/A",
+      "Aadhaar": fullEmployee?.aadhaar || "N/A",
+      "UAN": fullEmployee?.uan || "N/A",
+      "ESIC Number": fullEmployee?.esicNumber || "N/A",
       "PF Opted": fullEmployee?.pfOptIn ? "Yes" : "No",
       "ESI Applicable": fullEmployee?.esiApplicable ? "Yes" : "No",
+      "LWF State": fullEmployee?.lwfState || "N/A",
+      
+      // Bank Information
+      "Bank Account": fullEmployee?.bankAccount || "N/A",
+      "IFSC Code": fullEmployee?.ifsc || "N/A",
+      "Branch": fullEmployee?.branch || "N/A",
+      "Last Transaction ID": fullEmployee?.lastTransactionId || "N/A",
+      "Last Payment Date": fullEmployee?.lastPaymentDate ? new Date(fullEmployee.lastPaymentDate).toLocaleDateString() : "N/A",
+      
+      // Record Tracking
       "Record Created": new Date(rec.createdAt).toLocaleDateString(),
       "Last Updated": new Date(rec.updatedAt).toLocaleDateString(),
     }
   })
 
-  // Add summary rows
+  // Calculate comprehensive summary statistics
   const totalEmployees = filteredAttendance.length
   const totalPresentDays = filteredAttendance.reduce((sum, rec) => sum + rec.presentDays, 0)
   const totalWorkingDays = filteredAttendance.reduce((sum, rec) => sum + rec.totalDays, 0)
@@ -238,15 +321,70 @@ export function generateExcelExportData(
   const totalShiftAllowance = filteredAttendance.reduce((sum, rec) => sum + Number(rec.shiftAllowance), 0)
   const averageAttendance = totalWorkingDays > 0 ? Math.round((totalPresentDays / totalWorkingDays) * 100) : 0
 
+  // Calculate total salary impact
+  const totalMonthlyEarnings = filteredAttendance.reduce((sum, rec) => {
+    const fullEmployee = employees.find((e) => e.id === rec.employeeId)
+    if (!fullEmployee) return sum;
+    return sum + (
+      Number(fullEmployee.basicSalary || 0) +
+      Number(fullEmployee.specialBasic || 0) +
+      Number(fullEmployee.dearnessAllowance || 0) +
+      Number(fullEmployee.hra || 0) +
+      Number(fullEmployee.overtimeRate || 0) +
+      Number(fullEmployee.foodAllowance || 0) +
+      Number(fullEmployee.conveyanceAllowance || 0) +
+      Number(fullEmployee.officeWearAllowance || 0) +
+      Number(fullEmployee.bonus || 0) +
+      Number(fullEmployee.leaveWithWages || 0) +
+      Number(fullEmployee.otherAllowances || 0) +
+      Number(fullEmployee.rateOfWages || 0)
+    );
+  }, 0);
+
+  const totalMonthlyDeductions = filteredAttendance.reduce((sum, rec) => {
+    const fullEmployee = employees.find((e) => e.id === rec.employeeId)
+    if (!fullEmployee) return sum;
+    return sum + (
+      Number(fullEmployee.pfDeduction || 0) +
+      Number(fullEmployee.esicDeduction || 0) +
+      Number(fullEmployee.societyDeduction || 0) +
+      Number(fullEmployee.incomeTaxDeduction || 0) +
+      Number(fullEmployee.insuranceDeduction || 0) +
+      Number(fullEmployee.otherRecoveries || 0)
+    );
+  }, 0);
+
+  const totalOvertimePay = totalOvertimeHours * 500;
+  const totalEarnedSalaries = filteredAttendance.reduce((sum, rec) => {
+    const fullEmployee = employees.find((e) => e.id === rec.employeeId)
+    if (!fullEmployee) return sum;
+    const totalEarnings = (
+      Number(fullEmployee.basicSalary || 0) +
+      Number(fullEmployee.specialBasic || 0) +
+      Number(fullEmployee.dearnessAllowance || 0) +
+      Number(fullEmployee.hra || 0) +
+      Number(fullEmployee.overtimeRate || 0) +
+      Number(fullEmployee.foodAllowance || 0) +
+      Number(fullEmployee.conveyanceAllowance || 0) +
+      Number(fullEmployee.officeWearAllowance || 0) +
+      Number(fullEmployee.bonus || 0) +
+      Number(fullEmployee.leaveWithWages || 0) +
+      Number(fullEmployee.otherAllowances || 0) +
+      Number(fullEmployee.rateOfWages || 0)
+    );
+    return sum + ((totalEarnings * rec.presentDays) / rec.totalDays);
+  }, 0);
+
   // Add summary rows
   excelData.push({
     "Employee ID": "",
-    "Employee Name": "--- SUMMARY ---",
+    "Employee Name": "--- COMPREHENSIVE SUMMARY ---",
     "Department": "",
     "Designation": "",
     "Company": "",
     "Location": "",
     "Grade": "",
+    "Employment Status": "",
     "Month": "",
     "Year": "" as any,
     "Present Days": "" as any,
@@ -257,29 +395,62 @@ export function generateExcelExportData(
     "Overtime Hours": "" as any,
     "Shift Allowance": "" as any,
     "Basic Salary": "" as any,
-    "HRA": "" as any,
+    "Special Basic": "" as any,
+    "Dearness Allowance (DA)": "" as any,
+    "House Rent Allowance (HRA)": "" as any,
+    "Overtime Rate": "" as any,
+    "Food Allowance": "" as any,
+    "Conveyance Allowance": "" as any,
+    "Office Wear Allowance": "" as any,
+    "Bonus": "" as any,
+    "Leave With Wages": "" as any,
     "Other Allowances": "" as any,
-    "Total Monthly Salary": "" as any,
-    "Salary Earned (Pro-rated)": "" as any,
-    "Salary Loss": "" as any,
+    "Rate of Wages": "" as any,
+    "Total Earnings (Monthly)": "" as any,
+    "PF Deduction": "" as any,
+    "ESIC Deduction": "" as any,
+    "Society Deduction": "" as any,
+    "Income Tax Deduction": "" as any,
+    "Insurance Deduction": "" as any,
+    "Other Recoveries": "" as any,
+    "Total Deductions (Monthly)": "" as any,
+    "Net Salary (Monthly)": "" as any,
+    "Earned Salary (Pro-rated)": "" as any,
+    "Salary Loss Due to Absence": "" as any,
+    "Net Earned Salary": "" as any,
+    "Overtime Pay": "" as any,
+    "Final Net Pay (Including OT & Allowances)": "" as any,
+    "Employer PF Contribution": "" as any,
+    "Employer ESIC Contribution": "" as any,
     "Phone": "",
     "Email": "",
     "Joining Date": "",
-    "Employment Status": "",
+    "Date of Birth": "",
+    "PAN": "",
+    "Aadhaar": "",
+    "UAN": "",
+    "ESIC Number": "",
     "PF Opted": "",
     "ESI Applicable": "",
+    "LWF State": "",
+    "Bank Account": "",
+    "IFSC Code": "",
+    "Branch": "",
+    "Last Transaction ID": "",
+    "Last Payment Date": "",
     "Record Created": "",
     "Last Updated": "",
   })
 
   excelData.push({
-    "Employee ID": "TOTAL",
+    "Employee ID": "TOTALS",
     "Employee Name": `${totalEmployees} Employees`,
-    "Department": "",
+    "Department": `${new Set(employees.map(e => e.department)).size} Departments`,
     "Designation": "",
-    "Company": "",
+    "Company": `${new Set(employees.map(e => e.company)).size} Companies`,
     "Location": "",
     "Grade": "",
+    "Employment Status": "",
     "Month": "",
     "Year": "" as any,
     "Present Days": totalPresentDays,
@@ -288,19 +459,51 @@ export function generateExcelExportData(
     "Attendance Percentage": `${averageAttendance}%`,
     "Attendance Category": "",
     "Overtime Hours": totalOvertimeHours,
-    "Shift Allowance": totalShiftAllowance,
+    "Shift Allowance": Math.round(totalShiftAllowance),
     "Basic Salary": "" as any,
-    "HRA": "" as any,
+    "Special Basic": "" as any,
+    "Dearness Allowance (DA)": "" as any,
+    "House Rent Allowance (HRA)": "" as any,
+    "Overtime Rate": "" as any,
+    "Food Allowance": "" as any,
+    "Conveyance Allowance": "" as any,
+    "Office Wear Allowance": "" as any,
+    "Bonus": "" as any,
+    "Leave With Wages": "" as any,
     "Other Allowances": "" as any,
-    "Total Monthly Salary": "" as any,
-    "Salary Earned (Pro-rated)": "" as any,
-    "Salary Loss": "" as any,
+    "Rate of Wages": "" as any,
+    "Total Earnings (Monthly)": Math.round(totalMonthlyEarnings),
+    "PF Deduction": "" as any,
+    "ESIC Deduction": "" as any,
+    "Society Deduction": "" as any,
+    "Income Tax Deduction": "" as any,
+    "Insurance Deduction": "" as any,
+    "Other Recoveries": "" as any,
+    "Total Deductions (Monthly)": Math.round(totalMonthlyDeductions),
+    "Net Salary (Monthly)": Math.round(totalMonthlyEarnings - totalMonthlyDeductions),
+    "Earned Salary (Pro-rated)": Math.round(totalEarnedSalaries),
+    "Salary Loss Due to Absence": Math.round(totalMonthlyEarnings - totalEarnedSalaries),
+    "Net Earned Salary": Math.round(totalEarnedSalaries - totalMonthlyDeductions),
+    "Overtime Pay": totalOvertimePay,
+    "Final Net Pay (Including OT & Allowances)": Math.round(totalEarnedSalaries - totalMonthlyDeductions + totalOvertimePay + totalShiftAllowance),
+    "Employer PF Contribution": "" as any,
+    "Employer ESIC Contribution": "" as any,
     "Phone": "",
     "Email": "",
     "Joining Date": "",
-    "Employment Status": "",
+    "Date of Birth": "",
+    "PAN": "",
+    "Aadhaar": "",
+    "UAN": "",
+    "ESIC Number": "",
     "PF Opted": "",
     "ESI Applicable": "",
+    "LWF State": "",
+    "Bank Account": "",
+    "IFSC Code": "",
+    "Branch": "",
+    "Last Transaction ID": "",
+    "Last Payment Date": "",
     "Record Created": new Date().toLocaleDateString(),
     "Last Updated": "",
   })

@@ -67,7 +67,7 @@ export function AttendanceFilters({
           <Button
             variant={showFilters ? "default" : "outline"}
             onClick={onToggleFilters}
-            className="w-full sm:w-auto text-sm sm:text-base"
+            className="w-full sm:w-auto text-sm sm:text-base cursor-pointer"
           >
             <Filter className="h-4 w-4 mr-2" />
             Filters
@@ -82,7 +82,7 @@ export function AttendanceFilters({
             onClick={onExport}
             disabled={filteredAttendanceCount === 0}
             title="Download Excel Report"
-            className="w-full sm:w-auto text-sm sm:text-base"
+            className="w-full sm:w-auto text-sm sm:text-base cursor-pointer"
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -91,7 +91,7 @@ export function AttendanceFilters({
             <Button 
               variant="ghost" 
               onClick={onClearFilters}
-              className="w-full sm:w-auto text-sm sm:text-base"
+              className="w-full sm:w-auto text-sm sm:text-base cursor-pointer"
             >
               Clear All
             </Button>

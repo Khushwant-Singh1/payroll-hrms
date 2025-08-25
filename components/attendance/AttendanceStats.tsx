@@ -61,7 +61,7 @@ export function AttendanceStats({
             <div className="text-xl sm:text-2xl font-bold text-gray-900">{item.value}</div>
             <Button 
               variant="outline" 
-              className="w-full mt-3 sm:mt-4 text-sm sm:text-base"
+              className="w-full mt-3 sm:mt-4 text-sm sm:text-base cursor-pointer"
               onClick={item.onClick}
               disabled={item.disabled}
             >

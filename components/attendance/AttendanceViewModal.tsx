@@ -25,16 +25,42 @@ export function AttendanceViewModal({
   const employee = viewingAttendance.employee || employees.find(e => e.id === viewingAttendance.employeeId)
   const fullEmployee = employees.find(e => e.id === viewingAttendance.employeeId)
   
-  const basicSalary = employee?.basicSalary || fullEmployee?.basicSalary || 0
-  const hra = employee?.hra || fullEmployee?.hra || 0
-  const allowances = employee?.allowances || fullEmployee?.allowances || 0
-  const totalSalary = Number(basicSalary) + Number(hra) + Number(allowances)
+  // Calculate total earnings based on new schema
+  const totalMonthlyEarnings = fullEmployee ? (
+    Number(fullEmployee.basicSalary || 0) +
+    Number(fullEmployee.specialBasic || 0) +
+    Number(fullEmployee.dearnessAllowance || 0) +
+    Number(fullEmployee.hra || 0) +
+    Number(fullEmployee.overtimeRate || 0) +
+    Number(fullEmployee.foodAllowance || 0) +
+    Number(fullEmployee.conveyanceAllowance || 0) +
+    Number(fullEmployee.officeWearAllowance || 0) +
+    Number(fullEmployee.bonus || 0) +
+    Number(fullEmployee.leaveWithWages || 0) +
+    Number(fullEmployee.otherAllowances || 0) +
+    Number(fullEmployee.rateOfWages || 0)
+  ) : 0;
+
+  // Calculate total deductions based on new schema
+  const totalMonthlyDeductions = fullEmployee ? (
+    Number(fullEmployee.pfDeduction || 0) +
+    Number(fullEmployee.esicDeduction || 0) +
+    Number(fullEmployee.societyDeduction || 0) +
+    Number(fullEmployee.incomeTaxDeduction || 0) +
+    Number(fullEmployee.insuranceDeduction || 0) +
+    Number(fullEmployee.otherRecoveries || 0)
+  ) : 0;
+
+  // Calculate net salary
+  const netMonthlySalary = totalMonthlyEarnings - totalMonthlyDeductions;
+  
   const attendanceRate = viewingAttendance.presentDays / viewingAttendance.totalDays
-  const salaryEarned = totalSalary * attendanceRate
-  const salaryLoss = totalSalary - salaryEarned
-  const overtimePay = Number(viewingAttendance.overtimeHours) * 200
+  const salaryEarned = totalMonthlyEarnings * attendanceRate
+  const salaryLoss = totalMonthlyEarnings - salaryEarned
+  const overtimePay = Number(viewingAttendance.overtimeHours) * 500 // ₹500 per hour as per modal
   const shiftAllowance = Number(viewingAttendance.shiftAllowance)
-  const totalEarnings = salaryEarned + overtimePay + shiftAllowance
+  const netEarnedSalary = salaryEarned - totalMonthlyDeductions
+  const finalTotalEarnings = netEarnedSalary + overtimePay + shiftAllowance
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -112,19 +138,19 @@ export function AttendanceViewModal({
               <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200">
                 <label className="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-1 block">Basic Salary</label>
                 <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-                  {formatCurrency(basicSalary)}
+                  {formatCurrency(Number(fullEmployee?.basicSalary || 0))}
                 </p>
               </div>
               <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200">
                 <label className="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-1 block">HRA</label>
                 <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-                  {formatCurrency(hra)}
+                  {formatCurrency(Number(fullEmployee?.hra || 0))}
                 </p>
               </div>
               <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200">
-                <label className="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-1 block">Other Allowances</label>
+                <label className="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-1 block">Total Allowances</label>
                 <p className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-                  {formatCurrency(allowances)}
+                  {formatCurrency(totalMonthlyEarnings - Number(fullEmployee?.basicSalary || 0) - Number(fullEmployee?.hra || 0))}
                 </p>
               </div>
             </div>
@@ -132,8 +158,8 @@ export function AttendanceViewModal({
             <div className="space-y-4">
               <div className="bg-emerald-100 rounded-lg p-4 border border-emerald-200">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-emerald-800">Total Monthly Salary</span>
-                  <span className="text-xl font-bold text-emerald-900">{formatCurrency(totalSalary)}</span>
+                  <span className="text-sm font-medium text-emerald-800">Total Monthly Salary (Gross)</span>
+                  <span className="text-xl font-bold text-emerald-900">{formatCurrency(totalMonthlyEarnings)}</span>
                 </div>
               </div>
 
@@ -141,7 +167,7 @@ export function AttendanceViewModal({
                 <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200 text-center">
                   <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">Salary Earned</p>
                   <p className="text-sm sm:text-base md:text-lg font-bold text-green-600">{formatCurrency(Math.round(salaryEarned))}</p>
-                  <p className="text-xs text-gray-500">{(attendanceRate * 100).toFixed(1)}% of total</p>
+                  <p className="text-xs text-gray-500">{(attendanceRate * 100).toFixed(1)}% of gross</p>
                 </div>
                 
                 <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200 text-center">
@@ -151,25 +177,25 @@ export function AttendanceViewModal({
                 </div>
                 
                 <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200 text-center">
-                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">Overtime Pay</p>
-                  <p className="text-sm sm:text-base md:text-lg font-bold text-orange-600">{formatCurrency(overtimePay)}</p>
-                  <p className="text-xs text-gray-500">{Number(viewingAttendance.overtimeHours)} hours</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">Total Deductions</p>
+                  <p className="text-sm sm:text-base md:text-lg font-bold text-orange-600">{formatCurrency(totalMonthlyDeductions)}</p>
+                  <p className="text-xs text-gray-500">PF, ESI, Tax, etc.</p>
                 </div>
                 
                 <div className="bg-white rounded-lg p-2 sm:p-3 md:p-4 border border-emerald-200 text-center">
-                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">Shift Allowance</p>
-                  <p className="text-sm sm:text-base md:text-lg font-bold text-indigo-600">{formatCurrency(shiftAllowance)}</p>
-                  <p className="text-xs text-gray-500">Additional benefits</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">Overtime Pay</p>
+                  <p className="text-sm sm:text-base md:text-lg font-bold text-indigo-600">{formatCurrency(overtimePay)}</p>
+                  <p className="text-xs text-gray-500">{Number(viewingAttendance.overtimeHours)} hours</p>
                 </div>
               </div>
 
               <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Total Earnings This Month</span>
-                  <span className="text-2xl font-bold">{formatCurrency(Math.round(totalEarnings))}</span>
+                  <span className="text-sm font-medium">Final Net Pay This Month</span>
+                  <span className="text-2xl font-bold">{formatCurrency(Math.round(finalTotalEarnings))}</span>
                 </div>
                 <p className="text-xs text-emerald-100 mt-1">
-                  Including base salary, overtime, and allowances
+                  Including earned salary, overtime, allowances, minus deductions
                 </p>
               </div>
             </div>
@@ -319,25 +345,25 @@ export function AttendanceViewModal({
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-white rounded-lg p-3 sm:p-4 border border-amber-200">
-                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Basic Salary</label>
+                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Total Earnings</label>
                   <p className="text-base sm:text-lg font-semibold text-gray-900">
-                    {formatCurrency(Number(basicSalary))}
+                    {formatCurrency(totalMonthlyEarnings)}
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 sm:p-4 border border-amber-200">
-                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">HRA</label>
+                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Total Deductions</label>
                   <p className="text-base sm:text-lg font-semibold text-gray-900">
-                    {formatCurrency(Number(hra))}
+                    {formatCurrency(totalMonthlyDeductions)}
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 sm:p-4 border border-amber-200">
-                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Allowances</label>
+                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Net Monthly Salary</label>
                   <p className="text-base sm:text-lg font-semibold text-gray-900">
-                    {formatCurrency(Number(allowances))}
+                    {formatCurrency(netMonthlySalary)}
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 sm:p-4 border border-amber-200">
-                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Salary Earned</label>
+                  <label className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1 block">Salary Earned %</label>
                   <p className="text-base sm:text-lg font-semibold text-amber-600">
                     {((viewingAttendance.presentDays / viewingAttendance.totalDays) * 100).toFixed(1)}%
                   </p>

@@ -125,38 +125,228 @@ export function EmployeeManagement({
 
   /* ---------------- Excel Download ---------------- */
   const handleDownloadExcel = () => {
-    const rows = filteredEmployees.map((e) => ({
-      "Employee ID": e.employeeId,
-      Name: e.name,
-      Email: e.email,
-      Phone: e.phone,
-      Company: e.company,
-      Department: e.department,
-      Designation: e.designation,
-      Location: e.location ?? "",
-      Grade: e.grade ?? "",
-      "Joining Date": e.joiningDate,
-      "Date of Birth": e.dateOfBirth ?? "",
-      Status: e.status,
-      "Basic Salary": Number(e.basicSalary),
-      HRA: Number(e.hra),
-      Allowances: Number(e.allowances),
-      PAN: e.pan ?? "",
-      Aadhaar: e.aadhaar ?? "",
-      UAN: e.uan ?? "",
-      "ESIC Number": e.esicNumber ?? "",
-      "PF Opt In": e.pfOptIn,
-      "ESI Applicable": e.esiApplicable,
-      "LWF State": e.lwfState ?? "",
-      "Bank Account": e.bankAccount ?? "",
-      IFSC: e.ifsc ?? "",
-      Branch: e.branch ?? "",
-    }));
+    const rows = filteredEmployees.map((e) => {
+      // Calculate total earnings
+      const totalEarnings = (
+        Number(e.basicSalary || 0) +
+        Number(e.specialBasic || 0) +
+        Number(e.dearnessAllowance || 0) +
+        Number(e.hra || 0) +
+        Number(e.overtimeRate || 0) +
+        Number(e.foodAllowance || 0) +
+        Number(e.conveyanceAllowance || 0) +
+        Number(e.officeWearAllowance || 0) +
+        Number(e.bonus || 0) +
+        Number(e.leaveWithWages || 0) +
+        Number(e.otherAllowances || 0) +
+        Number(e.rateOfWages || 0)
+      );
+
+      // Calculate total deductions
+      const totalDeductions = (
+        Number(e.pfDeduction || 0) +
+        Number(e.esicDeduction || 0) +
+        Number(e.societyDeduction || 0) +
+        Number(e.incomeTaxDeduction || 0) +
+        Number(e.insuranceDeduction || 0) +
+        Number(e.otherRecoveries || 0)
+      );
+
+      // Calculate net salary
+      const netSalary = totalEarnings - totalDeductions;
+
+      return {
+        // Basic Information
+        "Employee ID": e.employeeId,
+        "Name": e.name,
+        "Email": e.email,
+        "Phone": e.phone,
+        "Department": e.department,
+        "Designation": e.designation,
+        "Company": e.company,
+        "Location": e.location ?? "",
+        "Grade": e.grade ?? "",
+        "Status": e.status,
+        "Joining Date": e.joiningDate,
+        "Date of Birth": e.dateOfBirth ?? "",
+
+        // Salary Components (Earnings)
+        "Basic Salary": Number(e.basicSalary || 0),
+        "Special Basic": Number(e.specialBasic || 0),
+        "Dearness Allowance (DA)": Number(e.dearnessAllowance || 0),
+        "House Rent Allowance (HRA)": Number(e.hra || 0),
+        "Overtime Rate": Number(e.overtimeRate || 0),
+        "Food Allowance": Number(e.foodAllowance || 0),
+        "Conveyance Allowance": Number(e.conveyanceAllowance || 0),
+        "Office Wear Allowance": Number(e.officeWearAllowance || 0),
+        "Bonus": Number(e.bonus || 0),
+        "Leave With Wages": Number(e.leaveWithWages || 0),
+        "Other Allowances": Number(e.otherAllowances || 0),
+        "Rate of Wages": Number(e.rateOfWages || 0),
+
+        // Calculated Totals
+        "Total Earnings": totalEarnings,
+
+        // Deductions (Employee Share)
+        "PF Deduction": Number(e.pfDeduction || 0),
+        "ESIC Deduction": Number(e.esicDeduction || 0),
+        "Society Deduction": Number(e.societyDeduction || 0),
+        "Income Tax Deduction": Number(e.incomeTaxDeduction || 0),
+        "Insurance Deduction": Number(e.insuranceDeduction || 0),
+        "Other Recoveries": Number(e.otherRecoveries || 0),
+
+        // Calculated Totals
+        "Total Deductions": totalDeductions,
+        "Net Salary": netSalary,
+
+        // Employer Contributions
+        "Employer PF Contribution": Number(e.employerPfContribution || 0),
+        "Employer ESIC Contribution": Number(e.employerEsicContribution || 0),
+
+        // Statutory Information
+        "PAN": e.pan ?? "",
+        "Aadhaar": e.aadhaar ?? "",
+        "UAN": e.uan ?? "",
+        "ESIC Number": e.esicNumber ?? "",
+        "PF Opt In": e.pfOptIn ? "Yes" : "No",
+        "ESI Applicable": e.esiApplicable ? "Yes" : "No",
+        "LWF State": e.lwfState ?? "",
+
+        // Bank Information
+        "Bank Account": e.bankAccount ?? "",
+        "IFSC Code": e.ifsc ?? "",
+        "Branch": e.branch ?? "",
+        "Last Transaction ID": e.lastTransactionId ?? "",
+        "Last Payment Date": e.lastPaymentDate ?? "",
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
+    
+    // Auto-size columns
+    const columnWidths: { wch: number }[] = [];
+    const headers = Object.keys(rows[0] || {});
+    
+    headers.forEach((header, index) => {
+      const maxLength = Math.max(
+        header.length,
+        ...rows.map(row => String(row[header as keyof typeof row] || "").length)
+      );
+      columnWidths[index] = { wch: Math.min(maxLength + 2, 30) };
+    });
+    
+    ws['!cols'] = columnWidths;
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Employees");
-    XLSX.writeFile(wb, "Employees.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Employee_Master_Data");
+    
+    // Create a comprehensive summary sheet
+    const summaryData = [
+      { "Metric": "Report Generated", "Value": new Date().toLocaleString() },
+      { "Metric": "Total Employees", "Value": filteredEmployees.length },
+      { "Metric": "Active Employees", "Value": filteredEmployees.filter(e => e.status === "active").length },
+      { "Metric": "Inactive Employees", "Value": filteredEmployees.filter(e => e.status === "inactive").length },
+      { "Metric": "Total Companies", "Value": new Set(filteredEmployees.map(e => e.company)).size },
+      { "Metric": "Total Departments", "Value": new Set(filteredEmployees.map(e => e.department)).size },
+      { "Metric": "", "Value": "" }, // Empty row for spacing
+      
+      // Salary Analysis
+      { "Metric": "SALARY BREAKDOWN", "Value": "" },
+      { "Metric": "Total Basic Salary (All Employees)", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.basicSalary || 0), 0) },
+      { "Metric": "Total HRA (All Employees)", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.hra || 0), 0) },
+      { "Metric": "Total Allowances (All Employees)", "Value": filteredEmployees.reduce((sum, e) => {
+          return sum + (
+            Number(e.specialBasic || 0) + Number(e.dearnessAllowance || 0) +
+            Number(e.foodAllowance || 0) + Number(e.conveyanceAllowance || 0) +
+            Number(e.officeWearAllowance || 0) + Number(e.bonus || 0) +
+            Number(e.leaveWithWages || 0) + Number(e.otherAllowances || 0) +
+            Number(e.rateOfWages || 0)
+          );
+        }, 0) },
+      { "Metric": "Total Earnings (All Employees)", "Value": filteredEmployees.reduce((sum, e) => {
+          return sum + (
+            Number(e.basicSalary || 0) + Number(e.specialBasic || 0) + Number(e.dearnessAllowance || 0) +
+            Number(e.hra || 0) + Number(e.overtimeRate || 0) + Number(e.foodAllowance || 0) +
+            Number(e.conveyanceAllowance || 0) + Number(e.officeWearAllowance || 0) +
+            Number(e.bonus || 0) + Number(e.leaveWithWages || 0) + Number(e.otherAllowances || 0) +
+            Number(e.rateOfWages || 0)
+          );
+        }, 0) },
+      { "Metric": "", "Value": "" }, // Empty row for spacing
+        
+      // Deductions Analysis
+      { "Metric": "DEDUCTIONS BREAKDOWN", "Value": "" },
+      { "Metric": "Total PF Deductions", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.pfDeduction || 0), 0) },
+      { "Metric": "Total ESIC Deductions", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.esicDeduction || 0), 0) },
+      { "Metric": "Total Income Tax Deductions", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.incomeTaxDeduction || 0), 0) },
+      { "Metric": "Total Other Deductions", "Value": filteredEmployees.reduce((sum, e) => {
+          return sum + (
+            Number(e.societyDeduction || 0) + Number(e.insuranceDeduction || 0) + Number(e.otherRecoveries || 0)
+          );
+        }, 0) },
+      { "Metric": "Total Deductions (All Employees)", "Value": filteredEmployees.reduce((sum, e) => {
+          return sum + (
+            Number(e.pfDeduction || 0) + Number(e.esicDeduction || 0) + Number(e.societyDeduction || 0) +
+            Number(e.incomeTaxDeduction || 0) + Number(e.insuranceDeduction || 0) + Number(e.otherRecoveries || 0)
+          );
+        }, 0) },
+      { "Metric": "", "Value": "" }, // Empty row for spacing
+        
+      // Net Salary Analysis
+      { "Metric": "NET SALARY ANALYSIS", "Value": "" },
+      { "Metric": "Total Net Salary (All Employees)", "Value": filteredEmployees.reduce((sum, e) => {
+          const earnings = (
+            Number(e.basicSalary || 0) + Number(e.specialBasic || 0) + Number(e.dearnessAllowance || 0) +
+            Number(e.hra || 0) + Number(e.overtimeRate || 0) + Number(e.foodAllowance || 0) +
+            Number(e.conveyanceAllowance || 0) + Number(e.officeWearAllowance || 0) +
+            Number(e.bonus || 0) + Number(e.leaveWithWages || 0) + Number(e.otherAllowances || 0) +
+            Number(e.rateOfWages || 0)
+          );
+          const deductions = (
+            Number(e.pfDeduction || 0) + Number(e.esicDeduction || 0) + Number(e.societyDeduction || 0) +
+            Number(e.incomeTaxDeduction || 0) + Number(e.insuranceDeduction || 0) + Number(e.otherRecoveries || 0)
+          );
+          return sum + (earnings - deductions);
+        }, 0) },
+      { "Metric": "Average Basic Salary", "Value": filteredEmployees.length > 0 ? Math.round(filteredEmployees.reduce((sum, e) => sum + Number(e.basicSalary || 0), 0) / filteredEmployees.length) : 0 },
+      { "Metric": "Average Net Salary", "Value": filteredEmployees.length > 0 ? Math.round(filteredEmployees.reduce((sum, e) => {
+          const earnings = (
+            Number(e.basicSalary || 0) + Number(e.specialBasic || 0) + Number(e.dearnessAllowance || 0) +
+            Number(e.hra || 0) + Number(e.overtimeRate || 0) + Number(e.foodAllowance || 0) +
+            Number(e.conveyanceAllowance || 0) + Number(e.officeWearAllowance || 0) +
+            Number(e.bonus || 0) + Number(e.leaveWithWages || 0) + Number(e.otherAllowances || 0) +
+            Number(e.rateOfWages || 0)
+          );
+          const deductions = (
+            Number(e.pfDeduction || 0) + Number(e.esicDeduction || 0) + Number(e.societyDeduction || 0) +
+            Number(e.incomeTaxDeduction || 0) + Number(e.insuranceDeduction || 0) + Number(e.otherRecoveries || 0)
+          );
+          return sum + (earnings - deductions);
+        }, 0) / filteredEmployees.length) : 0 },
+      { "Metric": "", "Value": "" }, // Empty row for spacing
+        
+      // Employer Contributions
+      { "Metric": "EMPLOYER CONTRIBUTIONS", "Value": "" },
+      { "Metric": "Total Employer PF Contribution", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.employerPfContribution || 0), 0) },
+      { "Metric": "Total Employer ESIC Contribution", "Value": filteredEmployees.reduce((sum, e) => sum + Number(e.employerEsicContribution || 0), 0) },
+      { "Metric": "", "Value": "" }, // Empty row for spacing
+        
+      // Filter Information
+      { "Metric": "APPLIED FILTERS", "Value": "" },
+      { "Metric": "Company Filter", "Value": companyFilter || "None" },
+      { "Metric": "Status Filter", "Value": statusFilter || "None" },
+      { "Metric": "Search Term", "Value": searchTerm || "None" }
+    ];
+
+    const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+    summaryWs['!cols'] = [{ wch: 35 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
+    
+    // Generate filename with current date
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `Employee_Master_Data_${currentDate}.xlsx`;
+    
+    XLSX.writeFile(wb, filename);
   };
 
   /* ---------------- UI ---------------- */
@@ -174,9 +364,10 @@ export function EmployeeManagement({
               variant="outline"
               onClick={handleDownloadExcel}
               className="cursor-pointer"
+              title="Download comprehensive employee data with salary calculations"
             >
               <Download className="h-4 w-4 mr-2" />
-              Download Excel
+              Export Excel
             </Button>
 
             <Button
@@ -424,7 +615,7 @@ export function EmployeeManagement({
                             size="sm"
                             variant="outline"
                             onClick={() => router.push(`/view-employee/${employee.id}`)}
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer"
                           >
                             <Eye className="h-3 w-3 sm:h-3 sm:w-3" />
                           </Button>
@@ -432,7 +623,7 @@ export function EmployeeManagement({
                             size="sm"
                             variant="outline"
                             onClick={() => router.push(`/edit-employee/${employee.id}`)}
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer"
                           >
                             <Edit className="h-3 w-3 sm:h-3 sm:w-3" />
                           </Button>
@@ -441,7 +632,7 @@ export function EmployeeManagement({
                             variant="destructive"
                             onClick={() => handleDelete(employee)}
                             disabled={deletingId === employee.id}
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 cursor-pointer"
                           >
                             {deletingId === employee.id ? (
                               <Loader2 className="h-3 w-3 sm:h-3 sm:w-3 animate-spin" />
